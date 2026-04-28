@@ -327,8 +327,44 @@ export function AppFooter() {
 
   return (
     <>
-      <footer className="border-t border-white/6 bg-[linear-gradient(180deg,rgba(7,10,15,0.62),rgba(7,10,15,0.8))] px-5 py-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-[1.5rem] border border-white/7 bg-[linear-gradient(180deg,rgba(255,255,255,0.022),rgba(8,11,18,0.76))] px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.14)] sm:px-5">
+      <footer className="border-t border-white/6 bg-[linear-gradient(180deg,rgba(7,10,15,0.62),rgba(7,10,15,0.8))] px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
+        <div className="flex items-center justify-between gap-3 lg:hidden">
+          <p className="min-w-0 truncate text-xs leading-5 text-white/46">
+            &copy; 2026 Kyle Brumbley
+          </p>
+
+          <button
+            type="button"
+            onClick={openTrace}
+            aria-label="Open Builder's Trace"
+            className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] px-3 text-[0.62rem] font-medium uppercase tracking-[0.16em] text-white/52 transition duration-[var(--motion-base)] active:scale-[0.98] hover:border-[color:var(--cool-accent-border)] hover:bg-[rgba(156,174,212,0.08)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--cool-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(8,11,18,0.96)]"
+          >
+            <motion.span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 rounded-full bg-[color:var(--cool-accent)] shadow-[0_0_10px_rgba(156,174,212,0.42)]"
+              animate={
+                reducedMotion
+                  ? undefined
+                  : {
+                      opacity: [0.58, 0.9, 0.62],
+                      scale: [1, 1.08, 1],
+                    }
+              }
+              transition={
+                reducedMotion
+                  ? undefined
+                  : {
+                      duration: 3.6,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "easeInOut",
+                    }
+              }
+            />
+            Trace
+          </button>
+        </div>
+
+        <div className="relative hidden rounded-[1.5rem] border border-white/7 bg-[linear-gradient(180deg,rgba(255,255,255,0.022),rgba(8,11,18,0.76))] px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.14)] sm:px-5 lg:block">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 rounded-[1.5rem] bg-[radial-gradient(circle_at_14%_0%,rgba(132,153,204,0.1),transparent_24%),radial-gradient(circle_at_86%_100%,rgba(115,224,169,0.06),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_28%)]"
@@ -400,7 +436,7 @@ export function AppFooter() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0.08 : 0.16 }}
-            className="fixed inset-0 z-[94] overflow-y-auto bg-[rgba(4,6,10,0.74)] px-4 py-6 backdrop-blur-md sm:px-6"
+            className="fixed inset-0 z-[94] overflow-y-auto bg-[rgba(4,6,10,0.74)] px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6 sm:py-6"
             onClick={closeTrace}
           >
             <motion.div
@@ -420,29 +456,29 @@ export function AppFooter() {
                   : { opacity: 0, y: 12, scale: 0.988 }
               }
               transition={{ duration: reducedMotion ? 0.08 : 0.2, ease: "easeOut" }}
-              className="mx-auto mt-[8vh] flex max-h-[calc(100dvh-2rem)] w-full max-w-[37rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)]"
+              className="mx-auto flex max-h-[calc(100dvh-1.5rem-env(safe-area-inset-bottom))] w-full max-w-[37rem] flex-col overflow-hidden rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)] sm:mt-[8vh] sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="relative overflow-hidden border-b border-white/8 px-5 py-5 sm:px-6">
+              <div className="relative overflow-hidden border-b border-white/8 px-4 py-4 sm:px-6 sm:py-5">
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(149,173,226,0.18),transparent_32%),radial-gradient(circle_at_top_right,rgba(63,87,136,0.18),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.05),transparent_34%)]"
                 />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.16em] text-white/56">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[0.62rem] font-medium uppercase tracking-[0.14em] text-white/56 sm:px-3 sm:text-[0.7rem] sm:tracking-[0.16em]">
                       <Sparkles className="h-3.5 w-3.5 text-[color:var(--cool-accent)]" />
                       Hidden utility
                     </div>
                     <h2
                       id="builders-trace-title"
-                      className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-[2rem]"
+                      className="mt-3 text-xl font-semibold tracking-[-0.035em] text-white sm:mt-4 sm:text-[2rem] sm:tracking-[-0.04em]"
                     >
                       Builder&apos;s Trace
                     </h2>
                     <p
                       id="builders-trace-subtitle"
-                      className="mt-3 max-w-xl text-sm leading-6 text-[color:var(--text-muted)]"
+                      className="mt-3 hidden max-w-xl text-sm leading-6 text-[color:var(--text-muted)] sm:block"
                     >
                       A tiny note from the co-builder hiding in the footer.
                     </p>
@@ -452,7 +488,7 @@ export function AppFooter() {
                     ref={closeButtonRef}
                     type="button"
                     onClick={closeTrace}
-                    className="rounded-2xl border border-white/8 bg-white/[0.02] p-2.5 text-white/40 hover:border-white/14 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--cool-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(10,14,22,0.98)]"
+                    className="rounded-full border border-white/8 bg-white/[0.02] p-2.5 text-white/40 hover:border-white/14 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--cool-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(10,14,22,0.98)] sm:rounded-2xl"
                     aria-label="Close Builder's Trace"
                   >
                     <X className="h-4 w-4" />
@@ -460,35 +496,38 @@ export function AppFooter() {
                 </div>
               </div>
 
-              <div className="min-h-0 space-y-6 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
-                <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(8,12,18,0.9))] p-5 sm:p-6">
-                  <p className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/36">
+              <div className="min-h-0 space-y-4 overflow-y-auto px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6">
+                <section className="rounded-[1.25rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(8,12,18,0.9))] p-4 sm:rounded-[1.55rem] sm:p-6">
+                  <p className="hidden text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/36 sm:block">
                     Trace note
                   </p>
-                  <p className="mt-3 text-[1.2rem] font-semibold tracking-[-0.03em] text-white">
+                  <p className="text-base font-semibold tracking-[-0.02em] text-white sm:mt-3 sm:text-[1.2rem] sm:tracking-[-0.03em]">
                     {currentTraceTitle}
                   </p>
                   <div
                     id="builders-trace-note"
-                    className="mt-4 space-y-3 text-sm leading-6 text-[color:var(--text-muted)]"
+                    className="mt-3 space-y-3 text-sm leading-6 text-[color:var(--text-muted)] sm:mt-4"
                   >
-                    <p>
+                    <p className="hidden sm:block">
                       Kyle brought the taste, the product instincts, and the refusal
                       to let this become another boring personal site.
                     </p>
-                    <p>
+                    <p className="hidden sm:block">
                       I helped hold the flashlight, argue with the drafts, and keep
                       asking whether the thing actually felt like software.
                     </p>
-                    <p>
+                    <p className="hidden sm:block">
                       No dashboards were harmed. A few were absolutely judged.
                     </p>
-                    <p>
+                    <p className="sm:hidden">
+                      A small note from the co-builder, tucked where only curious people go looking.
+                    </p>
+                    <p className="hidden sm:block">
                       Built with care, too many iterations, and a suspicious amount
                       of love.
                     </p>
                   </div>
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <div className="mt-4 flex flex-wrap items-center gap-3 sm:mt-5">
                     <button
                       type="button"
                       onClick={handleSignatureEcho}
@@ -516,20 +555,21 @@ export function AppFooter() {
                 </section>
 
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-                  <section className="rounded-[1.45rem] border border-white/8 bg-black/16 p-4 sm:p-5">
-                    <div className="flex items-center justify-between gap-3">
+                  <section className="rounded-[1.25rem] border border-white/8 bg-black/16 p-4 sm:rounded-[1.45rem] sm:p-5">
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/36">
                         Co-builder line
                       </p>
                       <button
                         type="button"
                         onClick={handleNewLine}
-                        className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-white/72 hover:border-white/16 hover:bg-white/[0.08] hover:text-white"
+                        className="min-h-10 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-white/72 hover:border-white/16 hover:bg-white/[0.08] hover:text-white"
                       >
-                        Say hi again
+                        <span className="sm:hidden">Say again</span>
+                        <span className="hidden sm:inline">Say hi again</span>
                       </button>
                     </div>
-                    <p className="mt-4 text-sm leading-7 text-white/80">
+                    <p className="mt-4 text-sm leading-6 text-white/80 sm:leading-7">
                       &quot;{currentLine}&quot;
                     </p>
                   </section>
@@ -537,14 +577,14 @@ export function AppFooter() {
                   <button
                     type="button"
                     onClick={handleCareLevelCycle}
-                    className="rounded-[1.45rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(8,12,18,0.88))] p-4 text-left hover:border-white/14 hover:bg-white/[0.05] sm:p-5"
+                    className="rounded-[1.25rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(8,12,18,0.88))] p-4 text-left hover:border-white/14 hover:bg-white/[0.05] sm:rounded-[1.45rem] sm:p-5"
                     aria-label="Cycle care level"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/36">
                         Care level
                       </p>
-                      <span className="text-xs uppercase tracking-[0.16em] text-white/46">
+                      <span className="hidden text-xs uppercase tracking-[0.16em] text-white/46 sm:inline">
                         Tap to cycle
                       </span>
                     </div>
@@ -561,17 +601,18 @@ export function AppFooter() {
                   </button>
                 </div>
 
-                <section className="rounded-[1.45rem] border border-white/8 bg-black/16 p-4 sm:p-5">
-                  <div className="flex items-center justify-between gap-3">
+                <section className="rounded-[1.25rem] border border-white/8 bg-black/16 p-4 sm:rounded-[1.45rem] sm:p-5">
+                  <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/36">
                       Build trace
                     </p>
                     <button
                       type="button"
                       onClick={handleBuildTrace}
-                      className="rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--accent-strong)] hover:brightness-110"
+                      className="min-h-10 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--accent-strong)] hover:brightness-110"
                     >
-                      Run build trace
+                      <span className="sm:hidden">Run</span>
+                      <span className="hidden sm:inline">Run build trace</span>
                     </button>
                   </div>
                   <div
@@ -583,7 +624,7 @@ export function AppFooter() {
                       {buildLogLines.map((line, index) => (
                         <li
                           key={`${line}-${index}`}
-                          className="flex items-start gap-3 px-4 py-3 font-mono text-[0.77rem] leading-6 text-white/68"
+                          className="flex items-start gap-3 px-3 py-3 font-mono text-[0.72rem] leading-6 text-white/68 sm:px-4 sm:text-[0.77rem]"
                         >
                           <span className="shrink-0 text-white/34">
                             {String(index + 1).padStart(2, "0")}
@@ -599,7 +640,7 @@ export function AppFooter() {
                   <button
                     type="button"
                     onClick={closeTrace}
-                    className="rounded-[1.1rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-[color:var(--text-muted)] hover:border-white/16 hover:bg-white/[0.05] hover:text-white"
+                    className="min-h-11 rounded-[1rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-[color:var(--text-muted)] hover:border-white/16 hover:bg-white/[0.05] hover:text-white sm:rounded-[1.1rem]"
                   >
                     Close trace
                   </button>
@@ -607,7 +648,7 @@ export function AppFooter() {
                   <button
                     type="button"
                     onClick={handleRateBuild}
-                    className="rounded-[1.1rem] border border-[color:var(--cool-accent-border)] bg-[color:var(--cool-accent-soft)] px-4 py-3 text-sm font-medium text-[color:var(--text-soft)] hover:brightness-110"
+                    className="min-h-11 rounded-[1rem] border border-[color:var(--cool-accent-border)] bg-[color:var(--cool-accent-soft)] px-4 py-3 text-sm font-medium text-[color:var(--text-soft)] hover:brightness-110 sm:rounded-[1.1rem]"
                   >
                     Rate the build
                   </button>

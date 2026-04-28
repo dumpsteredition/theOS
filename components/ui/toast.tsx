@@ -69,15 +69,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         aria-live="polite"
         aria-atomic="true"
-        className="pointer-events-none fixed bottom-4 right-4 z-[80] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
+        className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top)+7rem)] z-[80] flex w-[min(24rem,calc(100vw-1.5rem))] -translate-x-1/2 flex-col gap-3 xl:top-[calc(env(safe-area-inset-top)+5.25rem)]"
       >
         <AnimatePresence initial={false}>
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
-              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.98 }}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.98 }}
               animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.98 }}
+              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
               className="pointer-events-auto rounded-[var(--radius-xl)] border border-[color:var(--accent-border)] bg-[linear-gradient(180deg,rgba(18,23,32,0.98),rgba(11,14,20,0.98))] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
             >

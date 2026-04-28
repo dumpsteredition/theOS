@@ -221,9 +221,13 @@ export function ProfileEditorView() {
   const aboutFieldId = useId();
   const roleFieldId = useId();
   const fluffFieldId = useId();
+  const mobileFluffFieldId = useId();
   const languageFilterHintId = useId();
+  const mobileLanguageFilterHintId = useId();
   const jargonHintId = useId();
+  const mobileJargonHintId = useId();
   const smallTalkHintId = useId();
+  const mobileSmallTalkHintId = useId();
   const aboutFieldRef = useRef<HTMLTextAreaElement>(null);
   const timeoutIdsRef = useRef<number[]>([]);
   const fluffResetPendingRef = useRef(false);
@@ -246,6 +250,7 @@ export function ProfileEditorView() {
   const [smallTalkMode, setSmallTalkMode] = useState<SmallTalkMode>("low");
   const [rewriteIndex, setRewriteIndex] = useState(-1);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [shouldShowPreferenceStatus, setShouldShowPreferenceStatus] = useState(false);
   const [liveMessage, setLiveMessage] = useState("");
 
   const hasAboutDraft = aboutDraft !== initialAboutValue;
@@ -287,6 +292,33 @@ export function ProfileEditorView() {
   useEffect(() => {
     return () => {
       timeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, []);
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia("(max-width: 1023px)");
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+
+    const syncMobileEditState = () => {
+      if (!mobileQuery.matches) {
+        return;
+      }
+
+      setIsEditMode(false);
+      setIsReviewOpen(false);
+    };
+    const syncPreferenceStatus = () => {
+      setShouldShowPreferenceStatus(desktopQuery.matches);
+    };
+
+    syncMobileEditState();
+    syncPreferenceStatus();
+    mobileQuery.addEventListener("change", syncMobileEditState);
+    desktopQuery.addEventListener("change", syncPreferenceStatus);
+
+    return () => {
+      mobileQuery.removeEventListener("change", syncMobileEditState);
+      desktopQuery.removeEventListener("change", syncPreferenceStatus);
     };
   }, []);
 
@@ -505,11 +537,11 @@ export function ProfileEditorView() {
 
   return (
     <>
-      <section className="space-y-6 pb-10">
+      <section className="space-y-6 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-10">
         <motion.section
           {...sectionMotion}
           className={cn(
-            "luxe-panel relative overflow-hidden rounded-[2.5rem] px-5 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-8",
+            "luxe-panel relative overflow-hidden rounded-[1.85rem] px-4 py-5 sm:rounded-[2.2rem] sm:px-6 sm:py-6 lg:rounded-[2.5rem] xl:px-8 xl:py-8",
             isEditMode ? "border-[rgba(156,174,212,0.2)] shadow-[0_40px_120px_rgba(3,8,19,0.5)]" : "",
           )}
         >
@@ -525,7 +557,11 @@ export function ProfileEditorView() {
 
           <div className="relative flex flex-col gap-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5 lg:hidden">
+                <StatusPill tone="accent">Product Lead</StatusPill>
+              </div>
+
+              <div className="hidden flex-wrap items-center gap-2.5 lg:flex">
                 {profileContent.heroBadges.map((badge) => (
                   <StatusPill key={badge.label} tone={badge.tone}>
                     {badge.label}
@@ -533,7 +569,7 @@ export function ProfileEditorView() {
                 ))}
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="hidden flex-wrap gap-2 lg:flex">
                 <EditorButton
                   tone="secondary"
                   onClick={handleEditToggle}
@@ -568,7 +604,7 @@ export function ProfileEditorView() {
               <div className="space-y-5">
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                   {profileContent.avatarPath ? (
-                    <div className="relative h-24 w-24 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-[var(--shadow-panel)]">
+                    <div className="relative h-24 w-24 overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/[0.04] shadow-[var(--shadow-panel)] sm:rounded-[2rem]">
                       <Image
                         src={profileContent.avatarPath}
                         alt={profileContent.avatarLabel}
@@ -585,23 +621,46 @@ export function ProfileEditorView() {
                   <div className="min-w-0 flex-1 space-y-4">
                     <div className="space-y-3">
                       <p className="eyebrow">Profile</p>
-                      <h2 className="text-[clamp(2.2rem,5vw,4.2rem)] font-semibold leading-[0.95] tracking-[-0.05em] text-white">
+                      <h2 className="text-[clamp(2.1rem,12vw,3.2rem)] font-semibold leading-[0.98] tracking-[-0.035em] text-white sm:text-[3.4rem] lg:text-[clamp(2.2rem,5vw,4.2rem)] lg:leading-[0.95] lg:tracking-[-0.05em]">
                         {profileContent.name}
                       </h2>
-                      <p className="max-w-4xl text-xl leading-8 text-white/88 sm:text-[1.4rem]">
+                      <p className="max-w-4xl text-lg leading-7 text-white/88 sm:text-xl sm:leading-8 lg:text-[1.4rem]">
                         {profileContent.positioning}
                       </p>
                     </div>
 
-                    <div className="space-y-3 text-base leading-7 text-[color:var(--text-muted)]">
+                    <div className="space-y-3 text-[0.98rem] leading-7 text-[color:var(--text-muted)] sm:text-base">
                       {profileContent.heroSupport.map((line) => (
-                        <p key={line}>{line}</p>
+                        <p key={line} className={line === profileContent.heroSupport[1] ? "hidden lg:block" : undefined}>{line}</p>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                <MobileProfileContent
+                  fluffFieldId={mobileFluffFieldId}
+                  languageFilterHintId={mobileLanguageFilterHintId}
+                  jargonHintId={mobileJargonHintId}
+                  smallTalkHintId={mobileSmallTalkHintId}
+                  fluffTolerance={fluffTolerance}
+                  languageFilterMeta={languageFilterMeta}
+                  languageFilterMode={languageFilterMode}
+                  languageFilterDamage={languageFilterDamage}
+                  languageFilterRepairNudges={languageFilterRepairNudges}
+                  hasExperiencedLanguageFilterRecovery={hasExperiencedLanguageFilterRecovery}
+                  jargonSuppressionEnabled={jargonSuppressionEnabled}
+                  smallTalkMode={smallTalkMode}
+                  smallTalkSelection={smallTalkSelection}
+                  communicationFooterMessage={communicationFooterMessage}
+                  onFluffToleranceChange={handleFluffToleranceChange}
+                  onLanguageFilterInteract={handleLanguageFilterInteract}
+                  onLanguageFilterTapeRemove={handleLanguageFilterTapeRemove}
+                  onLanguageFilterSecretReset={handleLanguageFilterSecretReset}
+                  onJargonSuppressionChange={handleJargonSuppressionChange}
+                  onSmallTalkModeChange={handleSmallTalkModeChange}
+                />
+
+                <div className="hidden gap-4 lg:grid lg:grid-cols-2">
                   <ProfileFieldSurface
                     icon={UserRound}
                     label="Name"
@@ -710,6 +769,7 @@ export function ProfileEditorView() {
                       </button>
                     ) : null
                   }
+                  className="hidden lg:block"
                 >
                   <label htmlFor={aboutFieldId} className="sr-only">
                     {profileContent.aboutField.title}
@@ -760,7 +820,7 @@ export function ProfileEditorView() {
                 </ProfileFieldSurface>
               </div>
 
-              <div className="space-y-5">
+              <div className="hidden space-y-5 lg:block">
                 <motion.section {...sectionMotion} transition={{ ...sectionMotion.transition, delay: 0.03 }} className="app-panel-muted rounded-[2rem] p-5 sm:p-6">
                   <div className="flex items-start gap-3">
                     <BarChart3 className="mt-0.5 h-5 w-5 text-[color:var(--accent)]" />
@@ -803,149 +863,29 @@ export function ProfileEditorView() {
 
                 </motion.section>
 
-                <motion.section {...sectionMotion} transition={{ ...sectionMotion.transition, delay: 0.05 }} className="app-panel rounded-[2rem] p-5 sm:p-6">
-                  <div className="flex items-start gap-3">
-                    <SlidersHorizontal className="mt-0.5 h-5 w-5 text-[color:var(--accent)]" />
-                    <div>
-                      <p className="eyebrow">Communication preferences</p>
-                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">
-                        How Kyle tends to communicate
-                      </h3>
-                      <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">
-                        Calibrated for clarity, low fluff, and minimal patience for corporate theater.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 overflow-hidden rounded-[1.45rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(7,10,16,0.92))]">
-                    <PreferenceRow
-                      label={profileContent.playful.fluffTolerance.label}
-                      status={fluffTolerance === 0 ? "Locked low" : "Correcting"}
-                    >
-                      <div className="mt-4 space-y-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-medium text-white">
-                            {profileContent.playful.fluffTolerance.valueLabel}
-                          </p>
-                          <span className="text-xs uppercase tracking-[0.16em] text-white/42">
-                            Runtime protected
-                          </span>
-                        </div>
-
-                        <label htmlFor={fluffFieldId} className="sr-only">
-                          {profileContent.playful.fluffTolerance.label}
-                        </label>
-                        <input
-                          id={fluffFieldId}
-                          type="range"
-                          min={0}
-                          max={100}
-                          step={10}
-                          value={fluffTolerance}
-                          onChange={(event) => handleFluffToleranceChange(Number(event.target.value))}
-                          className="h-2 w-full cursor-pointer accent-[color:var(--accent)]"
-                        />
-
-                        <div className="flex items-center justify-between text-[0.68rem] uppercase tracking-[0.16em] text-white/38">
-                          <span>Critically low</span>
-                          <span>Unwise amount</span>
-                        </div>
-                      </div>
-                    </PreferenceRow>
-
-                    <PreferenceRow
-                      label="Language filter"
-                      status={languageFilterMeta.status}
-                      helper={languageFilterMeta.helper}
-                      helperId={languageFilterHintId}
-                      onStatusDoubleClick={
-                        languageFilterMode === "repaired"
-                          ? handleLanguageFilterSecretReset
-                          : undefined
-                      }
-                      className="border-t border-white/8"
-                    >
-                      <div className="mt-4 flex justify-end">
-                        <BrokenBrumbleSwitch
-                          mode={languageFilterMode}
-                          damage={languageFilterDamage}
-                          repairNudges={languageFilterRepairNudges}
-                          noteVariant={
-                            hasExperiencedLanguageFilterRecovery
-                              ? "escalated"
-                              : "default"
-                          }
-                          label="Language filter"
-                          ariaDescribedBy={languageFilterHintId}
-                          onInteract={handleLanguageFilterInteract}
-                          onTapeInteract={handleLanguageFilterTapeRemove}
-                        />
-                      </div>
-                    </PreferenceRow>
-
-                    <PreferenceRow
-                      label="Corporate jargon suppression"
-                      status={jargonSuppressionEnabled ? "On" : "Off"}
-                      className="border-t border-white/8"
-                    >
-                      <div className="mt-4 flex items-center justify-between gap-4">
-                        <p id={jargonHintId} className="text-sm leading-6 text-[color:var(--text-muted)]">
-                          {jargonSuppressionEnabled ? jargonSuppressionCopy.on : jargonSuppressionCopy.off}
-                        </p>
-                        <BrumbleSwitch
-                          checked={jargonSuppressionEnabled}
-                          label="Corporate jargon suppression"
-                          ariaDescribedBy={jargonHintId}
-                          onCheckedChange={handleJargonSuppressionChange}
-                        />
-                      </div>
-                    </PreferenceRow>
-
-                    <PreferenceRow
-                      label="Small talk bandwidth"
-                      status={smallTalkSelection.label}
-                      className="border-t border-white/8"
-                    >
-                      <div className="mt-4 space-y-3">
-                        <div
-                          role="group"
-                          aria-describedby={smallTalkHintId}
-                          className="inline-flex w-full rounded-full border border-white/10 bg-black/18 p-1"
-                        >
-                          {smallTalkOptions.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() => handleSmallTalkModeChange(option.id)}
-                              aria-pressed={smallTalkMode === option.id}
-                              className={cn(
-                                "flex-1 rounded-full px-3 py-2 text-xs font-medium uppercase tracking-[0.16em] transition duration-[var(--motion-base)]",
-                                smallTalkToneClasses[option.id].focus,
-                                smallTalkMode === option.id
-                                  ? smallTalkToneClasses[option.id].active
-                                  : cn("text-[color:var(--text-muted)]", smallTalkToneClasses[option.id].hover),
-                              )}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                        <p id={smallTalkHintId} className="text-sm leading-6 text-[color:var(--text-muted)]">
-                          {smallTalkSelection.helper}
-                        </p>
-                      </div>
-                    </PreferenceRow>
-                  </div>
-
-                  <div className="mt-4 rounded-[1.25rem] border border-white/8 bg-black/10 px-4 py-3">
-                    <p className="text-[0.68rem] uppercase tracking-[0.16em] text-white/38">
-                      System note
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-[color:var(--text-muted)]">
-                      {communicationFooterMessage}
-                    </p>
-                  </div>
-                </motion.section>
+                <CommunicationPreferencesPanel
+                  fluffFieldId={fluffFieldId}
+                  languageFilterHintId={languageFilterHintId}
+                  jargonHintId={jargonHintId}
+                  smallTalkHintId={smallTalkHintId}
+                  fluffTolerance={fluffTolerance}
+                  languageFilterMeta={languageFilterMeta}
+                  languageFilterMode={languageFilterMode}
+                  languageFilterDamage={languageFilterDamage}
+                  languageFilterRepairNudges={languageFilterRepairNudges}
+                  hasExperiencedLanguageFilterRecovery={hasExperiencedLanguageFilterRecovery}
+                  jargonSuppressionEnabled={jargonSuppressionEnabled}
+                  smallTalkMode={smallTalkMode}
+                  smallTalkSelection={smallTalkSelection}
+                  communicationFooterMessage={communicationFooterMessage}
+                  showStatusPills={shouldShowPreferenceStatus}
+                  onFluffToleranceChange={handleFluffToleranceChange}
+                  onLanguageFilterInteract={handleLanguageFilterInteract}
+                  onLanguageFilterTapeRemove={handleLanguageFilterTapeRemove}
+                  onLanguageFilterSecretReset={handleLanguageFilterSecretReset}
+                  onJargonSuppressionChange={handleJargonSuppressionChange}
+                  onSmallTalkModeChange={handleSmallTalkModeChange}
+                />
               </div>
             </div>
           </div>
@@ -959,6 +899,315 @@ export function ProfileEditorView() {
         <RecoveryTerminalOverlay onComplete={handleLanguageFilterRecoveryComplete} />
       ) : null}
     </>
+  );
+}
+
+function MobileProfileContent({
+  fluffFieldId,
+  languageFilterHintId,
+  jargonHintId,
+  smallTalkHintId,
+  fluffTolerance,
+  languageFilterMeta,
+  languageFilterMode,
+  languageFilterDamage,
+  languageFilterRepairNudges,
+  hasExperiencedLanguageFilterRecovery,
+  jargonSuppressionEnabled,
+  smallTalkMode,
+  smallTalkSelection,
+  communicationFooterMessage,
+  onFluffToleranceChange,
+  onLanguageFilterInteract,
+  onLanguageFilterTapeRemove,
+  onLanguageFilterSecretReset,
+  onJargonSuppressionChange,
+  onSmallTalkModeChange,
+}: CommunicationPreferencesPanelProps) {
+  return (
+    <div className="space-y-5 lg:hidden">
+      <section className="rounded-[1.45rem] border border-white/8 bg-black/10 p-4">
+        <p className="eyebrow">Specialty</p>
+        <p className="mt-3 text-base font-medium leading-7 text-white/90">
+          {profileContent.role}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {profileContent.specialtyChips.map((chip) => (
+            <span
+              key={chip}
+              className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[0.78rem] font-medium text-white/78"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,12,19,0.78))] p-4">
+        <p className="eyebrow">{profileContent.aboutField.title}</p>
+        <div className="mt-4 space-y-4 text-[0.98rem] leading-7 text-white/84">
+          {profileContent.aboutField.body.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[1.55rem] border border-white/8 bg-black/10 p-4">
+        <p className="eyebrow">Current focus</p>
+        <div className="mt-4 grid gap-2.5">
+          {profileContent.currentFocus.slice(0, 4).map((item) => (
+            <div
+              key={item}
+              className="rounded-[1rem] border border-white/8 bg-white/[0.035] px-3.5 py-3 text-sm leading-6 text-white/82"
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[1.55rem] border border-[color:var(--cool-accent-border)] bg-[color:var(--cool-accent-soft)] p-4">
+        <p className="eyebrow">{profileContent.bestFit.title}</p>
+        <p className="mt-3 text-sm leading-6 text-white/84">
+          {profileContent.bestFit.body}
+        </p>
+      </section>
+
+      <CommunicationPreferencesPanel
+        className="rounded-[1.65rem] p-4"
+        fluffFieldId={fluffFieldId}
+        languageFilterHintId={languageFilterHintId}
+        jargonHintId={jargonHintId}
+        smallTalkHintId={smallTalkHintId}
+        fluffTolerance={fluffTolerance}
+        languageFilterMeta={languageFilterMeta}
+        languageFilterMode={languageFilterMode}
+        languageFilterDamage={languageFilterDamage}
+        languageFilterRepairNudges={languageFilterRepairNudges}
+        hasExperiencedLanguageFilterRecovery={hasExperiencedLanguageFilterRecovery}
+        jargonSuppressionEnabled={jargonSuppressionEnabled}
+        smallTalkMode={smallTalkMode}
+        smallTalkSelection={smallTalkSelection}
+        communicationFooterMessage={communicationFooterMessage}
+        showStatusPills={false}
+        onFluffToleranceChange={onFluffToleranceChange}
+        onLanguageFilterInteract={onLanguageFilterInteract}
+        onLanguageFilterTapeRemove={onLanguageFilterTapeRemove}
+        onLanguageFilterSecretReset={onLanguageFilterSecretReset}
+        onJargonSuppressionChange={onJargonSuppressionChange}
+        onSmallTalkModeChange={onSmallTalkModeChange}
+      />
+    </div>
+  );
+}
+
+type CommunicationPreferencesPanelProps = {
+  className?: string;
+  fluffFieldId: string;
+  languageFilterHintId: string;
+  jargonHintId: string;
+  smallTalkHintId: string;
+  fluffTolerance: number;
+  languageFilterMeta: {
+    status: string;
+    helper: string;
+  };
+  languageFilterMode: LanguageFilterMode;
+  languageFilterDamage: number;
+  languageFilterRepairNudges: number;
+  hasExperiencedLanguageFilterRecovery: boolean;
+  jargonSuppressionEnabled: boolean;
+  smallTalkMode: SmallTalkMode;
+  smallTalkSelection: (typeof smallTalkOptions)[number];
+  communicationFooterMessage: string;
+  showStatusPills?: boolean;
+  onFluffToleranceChange: (nextValue: number) => void;
+  onLanguageFilterInteract: () => void;
+  onLanguageFilterTapeRemove: () => void;
+  onLanguageFilterSecretReset: () => void;
+  onJargonSuppressionChange: (next: boolean) => void;
+  onSmallTalkModeChange: (nextMode: SmallTalkMode) => void;
+};
+
+function CommunicationPreferencesPanel({
+  className,
+  fluffFieldId,
+  languageFilterHintId,
+  jargonHintId,
+  smallTalkHintId,
+  fluffTolerance,
+  languageFilterMeta,
+  languageFilterMode,
+  languageFilterDamage,
+  languageFilterRepairNudges,
+  hasExperiencedLanguageFilterRecovery,
+  jargonSuppressionEnabled,
+  smallTalkMode,
+  smallTalkSelection,
+  communicationFooterMessage,
+  showStatusPills = false,
+  onFluffToleranceChange,
+  onLanguageFilterInteract,
+  onLanguageFilterTapeRemove,
+  onLanguageFilterSecretReset,
+  onJargonSuppressionChange,
+  onSmallTalkModeChange,
+}: CommunicationPreferencesPanelProps) {
+  return (
+    <motion.section
+      {...sectionMotion}
+      transition={{ ...sectionMotion.transition, delay: 0.05 }}
+      className={cn("app-panel rounded-[2rem] p-5 sm:p-6", className)}
+    >
+      <div className="flex items-start gap-3">
+        <SlidersHorizontal className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--accent)]" />
+        <div>
+          <p className="eyebrow">Communication preferences</p>
+          <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">
+            How Kyle tends to communicate
+          </h3>
+          <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">
+            Calibrated for clarity, low fluff, and minimal patience for corporate theater.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-[1.45rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(7,10,16,0.92))]">
+        <PreferenceRow
+          label={profileContent.playful.fluffTolerance.label}
+          status={fluffTolerance === 0 ? "Locked low" : "Correcting"}
+          showStatus={showStatusPills}
+        >
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between gap-3 max-[420px]:items-start">
+              <p className="text-sm font-medium text-white">
+                {profileContent.playful.fluffTolerance.valueLabel}
+              </p>
+              {showStatusPills ? (
+                <span className="text-right text-xs uppercase tracking-[0.16em] text-white/42">
+                  Runtime protected
+                </span>
+              ) : null}
+            </div>
+
+            <label htmlFor={fluffFieldId} className="sr-only">
+              {profileContent.playful.fluffTolerance.label}
+            </label>
+            <input
+              id={fluffFieldId}
+              type="range"
+              min={0}
+              max={100}
+              step={10}
+              value={fluffTolerance}
+              onChange={(event) => onFluffToleranceChange(Number(event.target.value))}
+              className="h-2 w-full cursor-pointer accent-[color:var(--accent)]"
+            />
+
+            <div className="flex items-center justify-between text-[0.68rem] uppercase tracking-[0.16em] text-white/38 max-[360px]:gap-2 max-[360px]:text-[0.62rem]">
+              <span>Critically low</span>
+              <span>Unwise amount</span>
+            </div>
+          </div>
+        </PreferenceRow>
+
+        <PreferenceRow
+          label="Language filter"
+          status={languageFilterMeta.status}
+          helper={languageFilterMeta.helper}
+          helperId={languageFilterHintId}
+          showStatus={showStatusPills}
+          onStatusDoubleClick={
+            languageFilterMode === "repaired"
+              ? onLanguageFilterSecretReset
+              : undefined
+          }
+          className="border-t border-white/8"
+        >
+          <div className="mt-4 flex justify-end max-[480px]:justify-start">
+            <BrokenBrumbleSwitch
+              mode={languageFilterMode}
+              damage={languageFilterDamage}
+              repairNudges={languageFilterRepairNudges}
+              noteVariant={
+                hasExperiencedLanguageFilterRecovery
+                  ? "escalated"
+                  : "default"
+              }
+              label="Language filter"
+              ariaDescribedBy={languageFilterHintId}
+              onInteract={onLanguageFilterInteract}
+              onTapeInteract={onLanguageFilterTapeRemove}
+            />
+          </div>
+        </PreferenceRow>
+
+        <PreferenceRow
+          label="Corporate jargon suppression"
+          status={jargonSuppressionEnabled ? "On" : "Off"}
+          showStatus={showStatusPills}
+          className="border-t border-white/8"
+        >
+          <div className="mt-4 flex flex-col items-start gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <p id={jargonHintId} className="text-sm leading-6 text-[color:var(--text-muted)]">
+              {jargonSuppressionEnabled ? jargonSuppressionCopy.on : jargonSuppressionCopy.off}
+            </p>
+            <BrumbleSwitch
+              checked={jargonSuppressionEnabled}
+              label="Corporate jargon suppression"
+              ariaDescribedBy={jargonHintId}
+              className="profile-comm-switch"
+              onCheckedChange={onJargonSuppressionChange}
+            />
+          </div>
+        </PreferenceRow>
+
+        <PreferenceRow
+          label="Small talk bandwidth"
+          status={smallTalkSelection.label}
+          showStatus={showStatusPills}
+          className="border-t border-white/8"
+        >
+          <div className="mt-4 space-y-3">
+            <p id={smallTalkHintId} className="text-sm leading-6 text-[color:var(--text-muted)]">
+              {smallTalkSelection.helper}
+            </p>
+            <div
+              role="group"
+              aria-describedby={smallTalkHintId}
+              className="inline-flex w-full rounded-full border border-white/10 bg-black/18 p-1 max-[480px]:flex-col max-[480px]:rounded-[1rem]"
+            >
+              {smallTalkOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onSmallTalkModeChange(option.id)}
+                  aria-pressed={smallTalkMode === option.id}
+                  className={cn(
+                    "flex-1 rounded-full px-3 py-2 text-xs font-medium uppercase tracking-[0.16em] transition duration-[var(--motion-base)] max-[480px]:min-h-10 max-[480px]:w-full",
+                    smallTalkToneClasses[option.id].focus,
+                    smallTalkMode === option.id
+                      ? smallTalkToneClasses[option.id].active
+                      : cn("text-[color:var(--text-muted)]", smallTalkToneClasses[option.id].hover),
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </PreferenceRow>
+      </div>
+
+      <div className="mt-4 rounded-[1.25rem] border border-white/8 bg-black/10 px-4 py-3">
+        <p className="text-[0.68rem] uppercase tracking-[0.16em] text-white/38">
+          System note
+        </p>
+        <p className="mt-2 text-sm leading-6 text-[color:var(--text-muted)]">
+          {communicationFooterMessage}
+        </p>
+      </div>
+    </motion.section>
   );
 }
 
@@ -1001,6 +1250,7 @@ function PreferenceRow({
   status,
   helper,
   helperId,
+  showStatus = true,
   onStatusDoubleClick,
   className,
   children,
@@ -1009,14 +1259,15 @@ function PreferenceRow({
   status: string;
   helper?: string;
   helperId?: string;
+  showStatus?: boolean;
   onStatusDoubleClick?: () => void;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <section className={cn("px-4 py-4 sm:px-5", className)}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex items-start justify-between gap-3 max-[420px]:flex-col">
+        <div className="min-w-0">
           <p className="text-sm font-medium text-white">{label}</p>
           {helper ? (
             <p
@@ -1027,7 +1278,7 @@ function PreferenceRow({
             </p>
           ) : null}
         </div>
-        {onStatusDoubleClick ? (
+        {showStatus && onStatusDoubleClick ? (
           <button
             type="button"
             onDoubleClick={onStatusDoubleClick}
@@ -1036,11 +1287,11 @@ function PreferenceRow({
           >
             {status}
           </button>
-        ) : (
+        ) : showStatus ? (
           <span className="profile-comm-pills">
             {status}
           </span>
-        )}
+        ) : null}
       </div>
       {children}
     </section>

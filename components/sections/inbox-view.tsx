@@ -8,11 +8,16 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ArrowLeft,
   CheckCircle2,
   LoaderCircle,
   MessageSquareText,
+  MoreVertical,
+  Plus,
+  Search,
   SendHorizonal,
   SmilePlus,
   UserPlus,
@@ -344,6 +349,8 @@ export function InboxView() {
   const [replyCountsByThreadId, setReplyCountsByThreadId] =
     useState<Record<string, number>>(() => createInitialReplyCounts());
   const [selectedThreadId, setSelectedThreadId] = useState(inboxThreadSeeds[0]?.id ?? "");
+  const [hasMounted, setHasMounted] = useState(false);
+  const [isMobileConversationOpen, setIsMobileConversationOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [contactLeadValues, setContactLeadValues] =
     useState<ContactLeadValues>(initialContactLeadValues);
@@ -357,11 +364,23 @@ export function InboxView() {
   const [, startThreadSwitch] = useTransition();
   const conversationViewportRef = useRef<HTMLDivElement | null>(null);
   const conversationShellRef = useRef<HTMLDivElement | null>(null);
+  const mobileConversationViewportRef = useRef<HTMLDivElement | null>(null);
+  const mobileConversationShellRef = useRef<HTMLDivElement | null>(null);
   const selectedThreadIdRef = useRef(selectedThreadId);
   const replyCountsRef = useRef(replyCountsByThreadId);
   const threadsRef = useRef<InboxThread[]>(threads);
   const timeoutIdsRef = useRef<number[]>([]);
   const ambientMessagesSentRef = useRef(0);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setHasMounted(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   useEffect(() => {
     selectedThreadIdRef.current = selectedThreadId;
@@ -438,16 +457,21 @@ export function InboxView() {
   const selectedIsTyping = selectedThread?.isTyping ?? false;
 
   useEffect(() => {
-    const viewport = conversationViewportRef.current;
+    const viewports = [
+      conversationViewportRef.current,
+      mobileConversationViewportRef.current,
+    ].filter(Boolean);
 
-    if (!viewport) {
+    if (viewports.length === 0) {
       return;
     }
 
     const frame = window.requestAnimationFrame(() => {
-      viewport.scrollTo({
-        top: viewport.scrollHeight,
-        behavior: reducedMotion ? "auto" : "smooth",
+      viewports.forEach((viewport) => {
+        viewport?.scrollTo({
+          top: viewport.scrollHeight,
+          behavior: reducedMotion ? "auto" : "smooth",
+        });
       });
     });
 
@@ -684,6 +708,17 @@ export function InboxView() {
       updateThread(current, threadId, (thread) => ({ ...thread, unreadCount: 0 })),
     );
     startThreadSwitch(() => setSelectedThreadId(threadId));
+    setIsMobileConversationOpen(true);
+
+    if (window.innerWidth < 1024) {
+      window.requestAnimationFrame(() => {
+        mobileConversationShellRef.current?.scrollIntoView({
+          behavior: reducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+      return;
+    }
 
     if (window.innerWidth < 1280) {
       window.requestAnimationFrame(() => {
@@ -693,6 +728,11 @@ export function InboxView() {
         });
       });
     }
+  };
+
+  const handleReturnToThreadList = () => {
+    setActiveReactionTarget(null);
+    setIsMobileConversationOpen(false);
   };
 
   const handleDraftChange = (nextDraft: string) => {
@@ -782,6 +822,7 @@ export function InboxView() {
     setThreads((current) => [nextThread, ...current]);
     setReplyCountsByThreadId((current) => ({ ...current, [nextThread.id]: 0 }));
     setSelectedThreadId(nextThread.id);
+    setIsMobileConversationOpen(true);
     setIsAddContactOpen(false);
     setContactLeadValues(initialContactLeadValues);
     setContactLeadErrors({});
@@ -955,10 +996,208 @@ export function InboxView() {
     <section className="min-h-0">
       <motion.section
         {...sectionMotion}
-        className="app-panel overflow-hidden rounded-[2.35rem] lg:h-[calc(100svh-12rem)] lg:max-h-[calc(100svh-12rem)]"
+        className="relative h-[calc(100svh-12rem)] max-h-[calc(100svh-12rem)] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0b0c10] shadow-[0_24px_70px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.06)] lg:hidden"
       >
-        <div className="grid min-h-[calc(100svh-13rem)] grid-rows-[minmax(250px,34svh)_minmax(0,1fr)] lg:h-full lg:min-h-0 xl:grid-cols-[330px_minmax(0,1fr)] xl:grid-rows-none">
-          <aside className="flex min-h-0 flex-col border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(10,14,22,0.95))] lg:h-full xl:border-b-0 xl:border-r">
+        <AnimatePresence mode="wait" initial={false}>
+          {!isMobileConversationOpen ? (
+            <motion.div
+              key="mobile-thread-list"
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -18 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -12 }}
+              transition={{ duration: reducedMotion ? 0.12 : 0.2, ease: "easeOut" }}
+              className="flex h-full min-h-0 flex-col bg-[#0b0c10]"
+            >
+              <header className="shrink-0 px-4 pb-3 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-[1.7rem] font-semibold leading-none tracking-normal text-white">
+                    Messages
+                  </h2>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/72 transition duration-[var(--motion-base)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                      aria-label="Search messages"
+                    >
+                      <Search className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddContactOpen(true)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#1f6feb] text-white shadow-[0_8px_22px_rgba(31,111,235,0.28)] transition duration-[var(--motion-base)] active:scale-95 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                      aria-label="Add contact"
+                    >
+                      <UserPlus className="h-[1.125rem] w-[1.125rem]" />
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="mt-4 flex h-12 w-full items-center gap-3 rounded-full bg-[#1b1d22] px-4 text-left text-sm text-white/58 transition duration-[var(--motion-base)] active:bg-[#23262d] focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                  aria-label="Search messages"
+                >
+                  <Search className="h-[1.125rem] w-[1.125rem] text-white/42" />
+                  <span>Search messages</span>
+                </button>
+              </header>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+                {threads.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {threads.map((thread) => (
+                      <MobileThreadRow
+                        key={thread.id}
+                        thread={thread}
+                        isActive={thread.id === selectedThread.id}
+                        onSelect={() => handleSelectThread(thread.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mx-2 rounded-[1.25rem] bg-white/[0.06] p-4 text-sm leading-6 text-white/64">
+                    No threads yet. Add a contact to start a new conversation.
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAddContactOpen(true)}
+                className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#8ab4f8] px-4 text-sm font-semibold text-[#08131f] shadow-[0_14px_34px_rgba(0,0,0,0.38)] transition duration-[var(--motion-base)] active:scale-95 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+              >
+                <Plus className="h-5 w-5" />
+                Start chat
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="mobile-conversation"
+              ref={mobileConversationShellRef}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 22 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 14 }}
+              transition={{ duration: reducedMotion ? 0.12 : 0.2, ease: "easeOut" }}
+              className="flex h-full min-h-0 flex-col overflow-hidden bg-[#0b0c10]"
+            >
+              <header className="flex min-h-16 shrink-0 items-center gap-2 border-b border-white/[0.06] px-2.5 py-2">
+                <button
+                  type="button"
+                  onClick={handleReturnToThreadList}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/78 transition duration-[var(--motion-base)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                  aria-label="Back to messages"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+                <div
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+                  style={{
+                    background: `linear-gradient(180deg, ${selectedThread.softAccent}, rgba(40,44,52,0.96))`,
+                    boxShadow: `inset 0 0 0 1px ${selectedThread.borderAccent}`,
+                  }}
+                >
+                  {selectedThread.initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-base font-semibold tracking-normal text-white">
+                    {selectedThread.name}
+                  </h3>
+                  <p className="truncate text-xs text-white/52">
+                    {selectedThread.isTyping ? "Typing..." : selectedThread.role}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/68 transition duration-[var(--motion-base)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                  aria-label="Conversation options"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+              </header>
+
+              <div
+                ref={mobileConversationViewportRef}
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4"
+              >
+                <div className="space-y-3">
+                  {selectedThread.messages.map((message) => (
+                    <MobileConversationMessage
+                      key={message.id}
+                      thread={selectedThread}
+                      message={message}
+                      isReactionOpen={
+                        activeReactionTarget?.threadId === selectedThread.id &&
+                        activeReactionTarget.messageId === message.id
+                      }
+                      onToggleReactionPicker={handleToggleReactionPicker}
+                      onReact={handleReactToMessage}
+                    />
+                  ))}
+
+                  {selectedThread.isTyping ? (
+                    <TypingIndicator
+                      name={selectedThread.name}
+                      accent={selectedThread.accent}
+                      borderAccent={selectedThread.borderAccent}
+                      softAccent={selectedThread.softAccent}
+                    />
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-white/[0.06] bg-[#0b0c10] px-2.5 py-2.5">
+                <div className="flex items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddContactOpen(true)}
+                    className="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/66 transition duration-[var(--motion-base)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                    aria-label="Add contact"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                  <label htmlFor="mobile-inbox-composer" className="sr-only">
+                    Message
+                  </label>
+                  <textarea
+                    id="mobile-inbox-composer"
+                    value={selectedThread.draft}
+                    onChange={(event) => handleDraftChange(event.target.value)}
+                    onKeyDown={handleComposerKeyDown}
+                    rows={1}
+                    placeholder="Text message"
+                    className="max-h-28 min-h-11 flex-1 resize-none rounded-[1.4rem] border border-transparent bg-[#1b1d22] px-4 py-3 text-sm leading-5 text-white outline-none placeholder:text-white/44 focus:border-[#8ab4f8]/50 focus:ring-2 focus:ring-[#8ab4f8]/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendMessage}
+                    disabled={!canSend}
+                    className="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#8ab4f8] text-[#07121f] transition duration-[var(--motion-base)] active:scale-95 disabled:bg-[#2b2f36] disabled:text-white/34 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                    aria-label="Send message"
+                  >
+                    <SendHorizonal className="h-[1.125rem] w-[1.125rem]" />
+                  </button>
+                </div>
+                <p className="ml-14 mt-1 text-[0.68rem] text-white/34">
+                  May reach Kyle.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
+
+      <motion.section
+        {...sectionMotion}
+        className="app-panel hidden overflow-hidden rounded-[2.35rem] lg:block lg:h-[calc(100svh-12rem)] lg:max-h-[calc(100svh-12rem)]"
+      >
+        <div className="h-full min-h-0 lg:grid lg:grid-rows-[minmax(250px,34svh)_minmax(0,1fr)] xl:grid-cols-[330px_minmax(0,1fr)] xl:grid-rows-none">
+          <aside
+            className={cn(
+              "min-h-0 flex-col border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(10,14,22,0.95))] lg:flex lg:h-full xl:border-b-0 xl:border-r",
+              isMobileConversationOpen ? "hidden" : "flex",
+            )}
+          >
             <div className="border-b border-white/8 px-4 py-4 sm:px-5">
               <div className="flex items-start gap-4">
                 <div>
@@ -970,16 +1209,21 @@ export function InboxView() {
                     Inbox
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-[color:var(--text-muted)]">
-                    Click add contact if you really want to get in touch! Other than that? Click around and have some fun! P.S. Try to not get me fired.
+                    <span className="sm:hidden">
+                      Browse threads, reply, or add yourself.
+                    </span>
+                    <span className="hidden sm:inline">
+                      Click add contact if you really want to get in touch! Other than that? Click around and have some fun! P.S. Try to not get me fired.
+                    </span>
                   </p>
                 </div>
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
                 <motion.button
                   type="button"
                   onClick={() => setIsAddContactOpen(true)}
                   className={cn(
-                    "relative inline-flex items-center gap-2 overflow-hidden rounded-full border px-4 py-2.5 text-sm font-medium transition duration-[var(--motion-base)]",
+                    "relative inline-flex min-h-11 items-center gap-2 overflow-hidden rounded-full border px-4 py-2.5 text-sm font-medium transition duration-[var(--motion-base)] focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13]",
                     isAddContactOpen
                       ? "border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]"
                       : "border-[color:var(--accent-border)] bg-[linear-gradient(180deg,rgba(147,184,255,0.18),rgba(147,184,255,0.08))] text-white hover:brightness-110",
@@ -1042,7 +1286,7 @@ export function InboxView() {
               </div>
             </div>
 
-            <div className="max-h-[420px] min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 xl:max-h-none">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:max-h-[420px] lg:pb-4 xl:max-h-none">
               {threads.length > 0 ? (
                 <div className="space-y-2">
                   {threads.map((thread) => (
@@ -1062,12 +1306,26 @@ export function InboxView() {
             </div>
           </aside>
 
-          <div ref={conversationShellRef} className="flex min-h-0 flex-col lg:h-full">
-            <div className="border-b border-white/8 px-4 py-4 sm:px-6 sm:py-5">
-              <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <div
+            ref={conversationShellRef}
+            className={cn(
+              "h-full min-h-0 flex-col overflow-hidden lg:flex",
+              isMobileConversationOpen ? "flex" : "hidden",
+            )}
+          >
+            <div className="border-b border-white/8 px-4 py-3.5 sm:px-6 sm:py-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleReturnToThreadList}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[color:var(--text-muted)] transition duration-[var(--motion-base)] hover:border-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13] lg:hidden"
+                  aria-label="Back to inbox"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
                 <div
                   aria-hidden="true"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] border text-sm font-semibold text-white"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.9rem] border text-sm font-semibold text-white sm:h-11 sm:w-11 sm:rounded-[0.95rem]"
                   style={{
                     borderColor: selectedThread.borderAccent,
                     background: `linear-gradient(180deg, ${selectedThread.softAccent}, rgba(8, 12, 19, 0.96))`,
@@ -1076,27 +1334,27 @@ export function InboxView() {
                   {selectedThread.initials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-2xl font-semibold tracking-[-0.04em] text-white">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h3 className="truncate text-xl font-semibold tracking-[-0.04em] text-white sm:text-2xl">
                       {selectedThread.name}
                     </h3>
                     <span
                       className={cn(
-                        "rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.18em]",
+                        "shrink-0 rounded-full border px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.14em] sm:px-3 sm:text-[0.68rem] sm:tracking-[0.18em]",
                         getToneClasses(selectedThreadState.tone),
                       )}
                     >
                       {selectedThreadState.label}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-white/78">{selectedThread.role}</p>
+                  <p className="mt-1 truncate text-sm text-white/78">{selectedThread.role}</p>
                 </div>
               </div>
             </div>
 
             <div
               ref={conversationViewportRef}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6"
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
@@ -1133,36 +1391,45 @@ export function InboxView() {
               </AnimatePresence>
             </div>
 
-            <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/8 bg-[linear-gradient(180deg,rgba(13,18,27,0.98),rgba(8,11,18,1))] px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
-              <div className="rounded-[1.8rem] border border-white/8 bg-black/18 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-4">
+            <div className="z-10 shrink-0 border-t border-white/8 bg-[linear-gradient(180deg,rgba(13,18,27,0.98),rgba(8,11,18,1))] px-3 py-3 backdrop-blur-xl sm:px-6 sm:py-5 lg:sticky lg:bottom-0">
+              <div className="rounded-[1.25rem] border border-white/8 bg-black/18 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:rounded-[1.8rem] sm:p-4">
+                <label htmlFor="inbox-composer" className="sr-only">
+                  Message
+                </label>
                 <textarea
+                  id="inbox-composer"
                   value={selectedThread.draft}
                   onChange={(event) => handleDraftChange(event.target.value)}
                   onKeyDown={handleComposerKeyDown}
-                  rows={4}
+                  rows={3}
                   placeholder="Type message here..."
-                  className="min-h-[112px] w-full resize-none rounded-[1.3rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,11,18,0.9))] px-4 py-3 text-sm leading-6 text-white placeholder:text-[color:var(--text-muted)] outline-none transition duration-[var(--motion-base)] hover:border-white/14 focus:border-[color:var(--accent-border)] focus:ring-2 focus:ring-[color:var(--focus-ring)]"
+                  className="min-h-[84px] w-full resize-none rounded-[1.05rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,11,18,0.9))] px-4 py-3 text-sm leading-6 text-white placeholder:text-[color:var(--text-muted)] outline-none transition duration-[var(--motion-base)] hover:border-white/14 focus:border-[color:var(--accent-border)] focus:ring-2 focus:ring-[color:var(--focus-ring)] sm:min-h-[112px] sm:rounded-[1.3rem]"
                 />
 
-                <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="mt-3 flex flex-col gap-3 lg:mt-4 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
                   <div className="space-y-1.5">
                     <p className="text-xs leading-5 text-white/42">
-                      Sent messages may be shared with Kyle.
+                      <span className="sm:hidden">May reach Kyle.</span>
+                      <span className="hidden sm:inline">
+                        Sent messages may be shared with Kyle.
+                      </span>
                     </p>
-                    <p className="text-xs uppercase tracking-[0.16em] text-white/36">
+                    <p className="hidden text-xs uppercase tracking-[0.16em] text-white/36 sm:block">
                       Enter sends. Shift+Enter adds a new line.
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={handleSendMessage}
                       disabled={!canSend}
-                      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+                      aria-label="Send message"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                     >
                       <SendHorizonal className="h-4 w-4" />
-                      Send message
+                      <span className="sm:hidden">Send</span>
+                      <span className="hidden sm:inline">Send message</span>
                     </button>
                   </div>
                 </div>
@@ -1172,6 +1439,8 @@ export function InboxView() {
         </div>
       </motion.section>
 
+      {hasMounted
+        ? createPortal(
       <AnimatePresence initial={false}>
         {isAddContactOpen ? (
           <motion.div
@@ -1179,7 +1448,7 @@ export function InboxView() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(3,7,13,0.72)] p-4 backdrop-blur-md sm:items-center sm:p-6"
+            className="fixed inset-0 z-[90] flex items-end justify-center bg-[rgba(3,7,13,0.72)] p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:items-center sm:p-6"
             onClick={handleCloseAddContactModal}
           >
             <motion.div
@@ -1190,30 +1459,36 @@ export function InboxView() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.99 }}
               transition={{ duration: reducedMotion ? 0.12 : 0.2, ease: "easeOut" }}
-              className="flex max-h-[min(760px,calc(100svh-2rem))] w-full max-w-[38rem] flex-col overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(180deg,rgba(20,28,43,0.96),rgba(7,11,18,0.98))] shadow-[0_30px_90px_rgba(0,0,0,0.42)]"
+              className="flex max-h-[min(760px,calc(100svh_-_2rem))] w-full max-w-[38rem] flex-col overflow-hidden rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(20,28,43,0.96),rgba(7,11,18,0.98))] shadow-[0_30px_90px_rgba(0,0,0,0.42)] sm:max-h-[min(760px,calc(100svh_-_3rem))] sm:rounded-[1.9rem]"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="border-b border-white/8 px-5 py-5 sm:px-6">
+              <div className="border-b border-white/8 px-4 py-4 sm:px-6 sm:py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="eyebrow">Add Contact</p>
                     <h3
                       id="add-contact-title"
-                      className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white"
+                      className="mt-3 text-xl font-semibold tracking-[-0.04em] text-white sm:text-2xl"
                     >
-                      Put a real person into the rail.
+                      <span className="sm:hidden">Start a real thread.</span>
+                      <span className="hidden sm:inline">Put a real person into the rail.</span>
                     </h3>
                     <p className="mt-2 max-w-[32rem] text-sm leading-6 text-[color:var(--text-muted)]">
-                      Add yourself to the Inbox, leave the useful version of the brief, and Kyle gets the real details only when you submit.
+                      <span className="sm:hidden">
+                        Add the useful version of the brief.
+                      </span>
+                      <span className="hidden sm:inline">
+                        Add yourself to the Inbox, leave the useful version of the brief, and Kyle gets the real details only when you submit.
+                      </span>
                     </p>
-                    <p className="mt-2 text-xs leading-5 text-white/42">
+                    <p className="mt-2 hidden text-xs leading-5 text-white/42 sm:block">
                       Rail display uses first name plus last initial.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleCloseAddContactModal}
-                    className="rounded-full border border-white/10 bg-white/[0.04] p-2 text-[color:var(--text-muted)] transition duration-[var(--motion-base)] hover:border-white/14 hover:text-white"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[color:var(--text-muted)] transition duration-[var(--motion-base)] hover:border-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13]"
                     aria-label="Close add contact modal"
                   >
                     <X className="h-4 w-4" />
@@ -1221,14 +1496,13 @@ export function InboxView() {
                 </div>
               </div>
 
-              <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
                 <div className="grid gap-3">
                   <ContactLeadField
                     label="Name"
                     value={contactLeadValues.name}
                     error={contactLeadErrors.name}
                     placeholder="Who should Kyle know this thread belongs to?"
-                    autoFocus
                     onChange={(value) => handleContactFieldChange("name", value)}
                   />
                   <ContactLeadField
@@ -1287,22 +1561,25 @@ export function InboxView() {
                 </div>
               </div>
 
-              <div className="border-t border-white/8 px-5 py-4 sm:px-6">
+              <div className="border-t border-white/8 px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-3">
                   <p className="text-xs leading-5 text-white/42">
-                    Submitting this sends the real version to Kyle.
+                    <span className="sm:hidden">Sends this to Kyle.</span>
+                    <span className="hidden sm:inline">
+                      Submitting this sends the real version to Kyle.
+                    </span>
                   </p>
                   {contactSubmitError ? (
                     <p className="rounded-[1rem] border border-red-300/16 bg-red-500/8 px-3 py-2 text-xs leading-5 text-red-100/86">
                       {contactSubmitError}
                     </p>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                     <button
                       type="button"
                       onClick={handleAddContactSubmit}
                       disabled={isSubmittingContact}
-                      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13] disabled:cursor-not-allowed disabled:opacity-55"
                     >
                       {isSubmittingContact ? (
                         <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -1315,7 +1592,7 @@ export function InboxView() {
                       type="button"
                       onClick={handleCloseAddContactModal}
                       disabled={isSubmittingContact}
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-[color:var(--text-muted)] transition duration-[var(--motion-base)] hover:border-white/14 hover:bg-white/[0.06] hover:text-white"
+                      className="hidden min-h-11 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-[color:var(--text-muted)] transition duration-[var(--motion-base)] hover:border-white/14 hover:bg-white/[0.06] hover:text-white focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13] sm:inline-block"
                     >
                       Cancel
                     </button>
@@ -1325,7 +1602,10 @@ export function InboxView() {
             </motion.div>
           </motion.div>
         ) : null}
-      </AnimatePresence>
+      </AnimatePresence>,
+          document.body,
+        )
+        : null}
     </section>
   );
 }
@@ -1346,7 +1626,8 @@ function ThreadRailButton({
     <button
       type="button"
       onClick={onSelect}
-      className="interactive-panel relative w-full overflow-hidden rounded-[1rem] border p-3.5 text-left transition duration-[var(--motion-base)] sm:p-4"
+      aria-pressed={isActive}
+      className="interactive-panel relative w-full overflow-hidden rounded-[1rem] border p-3 text-left transition duration-[var(--motion-base)] focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13] sm:p-4"
       style={{
         borderColor: isActive ? thread.borderAccent : "rgba(255,255,255,0.08)",
         background: isActive
@@ -1365,7 +1646,7 @@ function ThreadRailButton({
       <div className="flex items-start gap-3">
         <div
           aria-hidden="true"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-sm font-semibold text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.85rem] border text-sm font-semibold text-white sm:h-11 sm:w-11 sm:rounded-[0.9rem]"
           style={{
             borderColor: thread.borderAccent,
             background: `linear-gradient(180deg, ${thread.softAccent}, rgba(8,12,19,0.92))`,
@@ -1377,7 +1658,7 @@ function ThreadRailButton({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">{thread.name}</p>
-              <p className="truncate text-xs uppercase tracking-[0.16em] text-white/42">
+              <p className="truncate text-[0.68rem] uppercase tracking-[0.12em] text-white/42 sm:text-xs sm:tracking-[0.16em]">
                 {thread.role}
               </p>
             </div>
@@ -1388,7 +1669,7 @@ function ThreadRailButton({
 
           <p
             className={cn(
-              "mt-3 text-sm leading-6",
+              "mt-2 text-sm leading-5 sm:mt-3 sm:leading-6",
               thread.unreadCount > 0 ? "text-white/92" : "text-[color:var(--text-muted)]",
             )}
             style={previewClampStyle}
@@ -1399,19 +1680,211 @@ function ThreadRailButton({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span
               className={cn(
-                "rounded-full border px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.18em]",
+                "rounded-full border px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.14em] sm:text-[0.68rem] sm:tracking-[0.18em]",
                 getToneClasses(state.tone),
               )}
             >
               {state.label}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+            <span className="hidden rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.18em] text-[color:var(--text-muted)] sm:inline-flex">
               {thread.statusLabel}
             </span>
           </div>
         </div>
       </div>
     </button>
+  );
+}
+
+function MobileThreadRow({
+  thread,
+  isActive,
+  onSelect,
+}: {
+  thread: InboxThread;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const state = getThreadState(thread);
+  const preview = getThreadPreview(thread);
+  const lastMessage = getLastMessage(thread);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={isActive}
+      className={cn(
+        "grid w-full grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.35rem] px-3 py-2.5 text-left transition duration-[var(--motion-base)] active:bg-white/[0.075] focus-visible:ring-2 focus-visible:ring-[#8ab4f8]",
+        isActive ? "bg-white/[0.07]" : "bg-transparent",
+      )}
+    >
+      <div
+        aria-hidden="true"
+        className="relative flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white"
+        style={{
+          background: `linear-gradient(180deg, ${thread.softAccent}, rgba(36,40,48,0.96))`,
+          boxShadow: `inset 0 0 0 1px ${thread.borderAccent}`,
+        }}
+      >
+        {thread.initials}
+        {thread.unreadCount > 0 ? (
+          <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0b0c10] bg-[#8ab4f8]" />
+        ) : null}
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-[0.96rem] font-semibold tracking-normal text-white">
+            {thread.name}
+          </p>
+          {thread.isTyping ? (
+            <span className="shrink-0 rounded-full bg-[#12335d] px-2 py-0.5 text-[0.64rem] font-medium text-[#8ab4f8]">
+              typing
+            </span>
+          ) : null}
+        </div>
+        <p
+          className={cn(
+            "mt-0.5 text-sm leading-5",
+            thread.unreadCount > 0 ? "font-medium text-white/86" : "text-white/52",
+          )}
+          style={previewClampStyle}
+        >
+          {preview}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-white/34">
+          {state.label} · {thread.role}
+        </p>
+      </div>
+
+      <div className="flex flex-col items-end gap-2 self-start pt-1">
+        <span className="text-xs text-white/42">{thread.railTime}</span>
+        {thread.unreadCount > 0 ? (
+          <span className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#8ab4f8] px-1.5 text-[0.68rem] font-semibold text-[#07121f]">
+            {thread.unreadCount}
+          </span>
+        ) : lastMessage?.sender === "kyle" ? (
+          <span className="h-2 w-2 rounded-full bg-white/22" aria-hidden="true" />
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+function MobileConversationMessage({
+  thread,
+  message,
+  isReactionOpen,
+  onToggleReactionPicker,
+  onReact,
+}: {
+  thread: InboxThread;
+  message: InboxMessage;
+  isReactionOpen: boolean;
+  onToggleReactionPicker: (threadId: string, messageId: string) => void;
+  onReact: (threadId: string, messageId: string, emoji: string) => void;
+}) {
+  const isKyle = message.sender === "kyle";
+  const reducedMotion = useReducedMotion();
+  const messageMeta = [message.shareState, message.deliveryState].filter(Boolean).join(" · ");
+
+  return (
+    <motion.article
+      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
+      className={cn("flex min-w-0", isKyle ? "justify-end" : "justify-start")}
+    >
+      <div
+        className={cn(
+          "group flex max-w-[84%] flex-col",
+          isKyle ? "items-end" : "items-start",
+        )}
+      >
+        <div
+          className={cn(
+            "min-w-0 rounded-[1.35rem] px-3.5 py-2.5 text-sm leading-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] [overflow-wrap:anywhere]",
+            isKyle
+              ? "rounded-br-md bg-[#8ab4f8] text-[#07121f]"
+              : "rounded-bl-md bg-[#202329] text-white/88",
+          )}
+        >
+          <div className="space-y-2">{renderMessageBody(message.body)}</div>
+        </div>
+
+        <div
+          data-reaction-anchor="true"
+          className={cn(
+            "relative mt-1.5 flex flex-wrap items-center gap-1.5",
+            isKyle ? "justify-end" : "justify-start",
+          )}
+        >
+          {message.reactions.map((reaction) => (
+            <motion.button
+              key={reaction}
+              type="button"
+              onClick={() => onReact(thread.id, message.id, reaction)}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="rounded-full border border-white/10 bg-[#1b1d22] px-2 py-0.5 text-xs text-white/86 focus-visible:ring-2 focus-visible:ring-[#8ab4f8]"
+              aria-label={`Toggle ${reaction} reaction`}
+            >
+              {reaction}
+            </motion.button>
+          ))}
+
+          <button
+            type="button"
+            data-reaction-anchor="true"
+            onClick={() => onToggleReactionPicker(thread.id, message.id)}
+            className="inline-flex min-h-7 items-center gap-1 rounded-full px-2 py-1 text-[0.68rem] font-medium text-white/42 transition duration-[var(--motion-base)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[#8ab4f8]"
+            aria-label="Open reaction picker"
+          >
+            <SmilePlus className="h-3.5 w-3.5" />
+            React
+          </button>
+
+          <AnimatePresence>
+            {isReactionOpen ? (
+              <motion.div
+                data-reaction-anchor="true"
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                className={cn(
+                  "absolute bottom-full z-20 mb-2 flex max-w-[calc(100vw-3rem)] items-center gap-1 rounded-full border border-white/10 bg-[#202329] p-1.5 shadow-[0_12px_28px_rgba(0,0,0,0.34)]",
+                  isKyle ? "right-0" : "left-0",
+                )}
+              >
+                {inboxReactionOptions.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    data-reaction-anchor="true"
+                    onClick={() => onReact(thread.id, message.id, emoji)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-lg transition duration-[var(--motion-base)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[#8ab4f8]"
+                    aria-label={`React with ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+
+        <p
+          className={cn(
+            "mt-0.5 max-w-full truncate text-[0.66rem] text-white/34",
+            isKyle ? "text-right" : "text-left",
+          )}
+        >
+          {messageMeta || message.sentAt}
+        </p>
+      </div>
+    </motion.article>
   );
 }
 
@@ -1437,12 +1910,17 @@ function ConversationMessage({
       initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
-      className={cn("flex", isKyle ? "justify-end" : "justify-start")}
+      className={cn("flex min-w-0", isKyle ? "justify-end" : "justify-start")}
     >
-      <div className={cn("group max-w-[min(42rem,100%)]", isKyle ? "items-end" : "items-start")}>
+      <div
+        className={cn(
+          "group flex min-w-0 max-w-[min(42rem,92%)] flex-col sm:max-w-[min(42rem,100%)]",
+          isKyle ? "items-end" : "items-start",
+        )}
+      >
         <div
           className={cn(
-            "rounded-[1rem] border px-4 py-3 sm:px-5",
+            "min-w-0 rounded-[1rem] border px-3.5 py-3 sm:px-5",
             isKyle
               ? "border-[color:var(--cool-accent-border)] bg-[rgba(156,174,212,0.12)]"
               : "border-white/10 bg-white/[0.035]",
@@ -1458,7 +1936,7 @@ function ConversationMessage({
             <span className="text-white/20">/</span>
             <span>{message.sentAt}</span>
           </div>
-          <div className="mt-3 space-y-3 text-sm leading-7 text-white/88">
+          <div className="mt-3 space-y-3 break-words text-sm leading-6 text-white/88 [overflow-wrap:anywhere] sm:leading-7">
             {renderMessageBody(message.body)}
           </div>
         </div>
@@ -1475,9 +1953,10 @@ function ConversationMessage({
               key={reaction}
               type="button"
               onClick={() => onReact(thread.id, message.id, reaction)}
-              initial={{ opacity: 0, scale: 0.9, y: 4 }}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-sm text-white/86"
+              className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-sm text-white/86 transition duration-[var(--motion-base)] focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13]"
+              aria-label={`Toggle ${reaction} reaction`}
             >
               {reaction}
             </motion.button>
@@ -1487,7 +1966,8 @@ function ConversationMessage({
             type="button"
             data-reaction-anchor="true"
             onClick={() => onToggleReactionPicker(thread.id, message.id)}
-            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/18 px-2.5 py-1.5 text-[0.72rem] uppercase tracking-[0.16em] text-[color:var(--text-muted)] opacity-100 transition duration-[var(--motion-base)] hover:border-white/14 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-white/10 bg-black/18 px-2.5 py-1.5 text-[0.72rem] uppercase tracking-[0.16em] text-[color:var(--text-muted)] opacity-100 transition duration-[var(--motion-base)] hover:border-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+            aria-label="Open reaction picker"
           >
             <SmilePlus className="h-3.5 w-3.5" />
             React
@@ -1512,7 +1992,7 @@ function ConversationMessage({
                     type="button"
                     data-reaction-anchor="true"
                     onClick={() => onReact(thread.id, message.id, emoji)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-transparent text-lg transition duration-[var(--motion-base)] hover:border-white/10 hover:bg-white/[0.06]"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-transparent text-lg transition duration-[var(--motion-base)] hover:border-white/10 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080c13]"
                     aria-label={`React with ${emoji}`}
                   >
                     {emoji}

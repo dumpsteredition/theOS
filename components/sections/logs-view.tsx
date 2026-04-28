@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenText, ChevronRight, FileText, Folder, ScanSearch, Search } from "lucide-react";
+import { BookOpenText, ChevronLeft, ChevronRight, FileText, Folder, ScanSearch, Search } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import {
@@ -77,6 +77,20 @@ export function LogsView() {
     [searchMatchedEntries],
   );
 
+  const filterOptions = useMemo(
+    () => [
+      {
+        filter: "All Logs" as const,
+        count: searchMatchedEntries.length,
+      },
+      ...systemLogCategories.map((category) => ({
+        filter: category,
+        count: categoryCounts[category],
+      })),
+    ],
+    [categoryCounts, searchMatchedEntries.length],
+  );
+
   const filteredEntries = useMemo(
     () =>
       activeFilter === "All Logs"
@@ -87,6 +101,9 @@ export function LogsView() {
 
   const selectedEntry =
     filteredEntries.find((entry) => entry.id === selectedEntryId) ?? filteredEntries[0] ?? null;
+  const selectedEntryIndex = selectedEntry
+    ? filteredEntries.findIndex((entry) => entry.id === selectedEntry.id)
+    : -1;
 
   const handleDiagnostics = () => {
     if (!filteredEntries.length) {
@@ -110,6 +127,20 @@ export function LogsView() {
     setStatusLine("Search filter cleared.");
   };
 
+  const handleStepEntry = (direction: -1 | 1) => {
+    if (!filteredEntries.length) {
+      setStatusLine("Signal scan returned nothing useful.");
+      return;
+    }
+
+    const currentIndex = selectedEntryIndex >= 0 ? selectedEntryIndex : 0;
+    const nextIndex =
+      (currentIndex + direction + filteredEntries.length) % filteredEntries.length;
+
+    setSelectedEntryId(filteredEntries[nextIndex].id);
+    setStatusLine(`Field note ${nextIndex + 1} of ${filteredEntries.length}.`);
+  };
+
   return (
     <section className="space-y-6">
       <ViewHeader
@@ -126,7 +157,7 @@ export function LogsView() {
               archive://field-notes
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
+          <div className="hidden flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)] sm:flex">
             <span className="rounded-full border border-white/8 bg-black/15 px-3 py-1 font-mono">
               Local index
             </span>
@@ -134,6 +165,9 @@ export function LogsView() {
               {systemLogEntries.length.toString().padStart(2, "0")} entries
             </span>
           </div>
+          <span className="rounded-full border border-white/8 bg-black/15 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-muted)] sm:hidden">
+            {systemLogEntries.length} logs
+          </span>
         </div>
 
         <div className="grid gap-3 border-b border-white/8 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -152,7 +186,7 @@ export function LogsView() {
                 className="h-12 w-full rounded-2xl border border-white/10 bg-black/18 pl-11 pr-4 text-sm text-white outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--cool-accent-border)] focus:bg-white/[0.04]"
               />
             </div>
-            <div className="rounded-2xl border border-white/8 bg-black/14 px-4 py-3">
+            <div className="hidden rounded-2xl border border-white/8 bg-black/14 px-4 py-3 sm:block">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
                 Visible
               </p>
@@ -165,15 +199,59 @@ export function LogsView() {
           <button
             type="button"
             onClick={handleDiagnostics}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110 sm:w-auto"
           >
             <ScanSearch className="h-4 w-4" />
-            Run diagnostics
+            <span className="sm:hidden">Run scan</span>
+            <span className="hidden sm:inline">Run diagnostics</span>
           </button>
         </div>
 
+        <div className="border-b border-white/8 px-4 py-4 min-[901px]:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="eyebrow">Folders</p>
+              <p className="mt-1 text-sm text-[color:var(--text-muted)]">
+                {filteredEntries.length} visible
+              </p>
+            </div>
+            <span className="max-w-[46%] truncate rounded-full border border-white/8 bg-black/18 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+              {activeFilter}
+            </span>
+          </div>
+          <div
+            className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1"
+            aria-label="Category filters"
+          >
+            {filterOptions.map(({ filter, count }) => {
+              const isActive = activeFilter === filter;
+
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setActiveFilter(filter)}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 font-mono text-[11px] uppercase tracking-[0.16em] transition duration-[var(--motion-base)]",
+                    isActive
+                      ? "border-[color:var(--cool-accent-border)] bg-[color:var(--cool-accent-soft)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                      : "border-white/8 bg-black/14 text-[color:var(--text-muted)] active:bg-white/[0.06]",
+                  )}
+                >
+                  <Folder className="h-3.5 w-3.5" />
+                  <span>{filter}</span>
+                  <span className="rounded-full border border-white/8 bg-black/20 px-1.5 py-0.5 text-[10px]">
+                    {count.toString().padStart(2, "0")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid gap-4 p-4 xl:grid-cols-[250px_minmax(0,1.06fr)_minmax(340px,0.94fr)]">
-          <aside className="min-w-0 rounded-[1.7rem] border border-white/8 bg-black/14 p-4">
+          <aside className="min-w-0 rounded-[1.7rem] border border-white/8 bg-black/14 p-4 max-[900px]:hidden">
             <div className="flex items-center gap-3">
               <Folder className="h-5 w-5 text-[color:var(--accent)]" />
               <div>
@@ -185,16 +263,7 @@ export function LogsView() {
             </div>
 
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-              {[
-                {
-                  filter: "All Logs" as const,
-                  count: searchMatchedEntries.length,
-                },
-                ...systemLogCategories.map((category) => ({
-                  filter: category,
-                  count: categoryCounts[category],
-                })),
-              ].map(({ filter, count }) => {
+              {filterOptions.map(({ filter, count }) => {
                 const isActive = activeFilter === filter;
 
                 return (
@@ -237,7 +306,7 @@ export function LogsView() {
             </div>
           </aside>
 
-          <div className="min-w-0 rounded-[1.7rem] border border-white/8 bg-black/14 p-4">
+          <div className="min-w-0 rounded-[1.7rem] border border-white/8 bg-black/14 p-4 max-[900px]:hidden">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-[color:var(--accent)]" />
@@ -255,7 +324,7 @@ export function LogsView() {
 
             {filteredEntries.length ? (
               <>
-                <div className="mt-4 hidden grid-cols-[minmax(0,1.45fr)_minmax(108px,0.58fr)_90px_110px] gap-3 px-4 text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)] md:grid">
+                <div className="mt-4 hidden grid-cols-[minmax(0,1.45fr)_minmax(108px,0.58fr)_90px_110px] gap-3 px-4 text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)] min-[901px]:grid">
                   <span>Log record</span>
                   <span>Category</span>
                   <span>Signal</span>
@@ -273,7 +342,7 @@ export function LogsView() {
                         onClick={() => setSelectedEntryId(entry.id)}
                         aria-pressed={isSelected}
                         className={cn(
-                          "grid w-full gap-3 rounded-[1.35rem] border px-4 py-4 text-left transition duration-[var(--motion-base)] md:grid-cols-[minmax(0,1.45fr)_minmax(108px,0.58fr)_90px_110px] md:items-center",
+                          "grid w-full gap-3 rounded-[1.35rem] border px-3.5 py-4 text-left transition duration-[var(--motion-base)] sm:px-4 min-[901px]:grid-cols-[minmax(0,1.45fr)_minmax(108px,0.58fr)_90px_110px] min-[901px]:items-center",
                           isSelected
                             ? "border-[color:var(--cool-accent-border)] bg-[color:var(--cool-accent-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                             : "border-white/8 bg-black/10 hover:border-white/14 hover:bg-white/[0.04]",
@@ -281,7 +350,7 @@ export function LogsView() {
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
+                            <span className="min-w-0 break-all font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)] min-[901px]:break-normal min-[901px]:tracking-[0.22em]">
                               {entry.fileName}
                             </span>
                             {isSelected ? (
@@ -293,24 +362,40 @@ export function LogsView() {
                           <p className="mt-2 text-sm font-semibold text-white sm:text-base">
                             {entry.title}
                           </p>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[color:var(--text-muted)]">
+                          <div className="mt-3 flex flex-wrap items-center gap-2 min-[901px]:hidden">
+                            <span className="rounded-full border border-white/8 bg-black/16 px-2.5 py-1 text-xs text-white/78">
+                              {entry.category}
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em]",
+                                getSignalTone(entry.signal),
+                              )}
+                            >
+                              {entry.signal}
+                            </span>
+                            <span className="rounded-full border border-white/8 bg-black/16 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                              {entry.status}
+                            </span>
+                          </div>
+                          <div className="mt-2 hidden flex-wrap items-center gap-2 text-sm text-[color:var(--text-muted)] min-[901px]:flex">
                             <ChevronRight className="h-4 w-4 shrink-0" />
                             <span>{entry.lastTouched}</span>
                           </div>
                         </div>
 
-                        <div className="text-sm text-white/86">{entry.category}</div>
+                        <div className="hidden text-sm text-white/86 min-[901px]:block">{entry.category}</div>
 
                         <span
                           className={cn(
-                            "inline-flex w-fit rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]",
+                            "hidden w-fit rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] min-[901px]:inline-flex",
                             getSignalTone(entry.signal),
                           )}
                         >
                           {entry.signal}
                         </span>
 
-                        <div className="text-sm text-[color:var(--text-muted)]">{entry.status}</div>
+                        <div className="hidden text-sm text-[color:var(--text-muted)] min-[901px]:block">{entry.status}</div>
                       </button>
                     );
                   })}
@@ -336,7 +421,7 @@ export function LogsView() {
           <aside className="min-w-0 rounded-[1.8rem] border border-white/8 bg-[color:var(--surface-canvas)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <div className="flex items-center gap-3">
               <BookOpenText className="h-5 w-5 text-[color:var(--accent)]" />
-              <div>
+              <div className="min-w-0">
                 <p className="eyebrow">Preview Viewer</p>
                 <p className="mt-1 text-sm text-[color:var(--text-muted)]">
                   Selected log and recovered metadata
@@ -347,7 +432,7 @@ export function LogsView() {
             {selectedEntry ? (
               <div className="mt-5 space-y-5">
                 <div className="rounded-[1.55rem] border border-white/8 bg-white/[0.03] p-5">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
+                  <p className="break-all font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)] min-[901px]:break-normal min-[901px]:tracking-[0.22em]">
                     {selectedEntry.fileName}
                   </p>
                   <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
@@ -357,13 +442,98 @@ export function LogsView() {
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
                       Recovered quote
                     </p>
-                    <blockquote className="mt-3 text-lg leading-8 text-white/92">
+                    <blockquote className="mt-3 text-lg leading-8 text-white/92 sm:text-xl sm:leading-9 min-[901px]:text-lg min-[901px]:leading-8">
                       {selectedEntry.quote}
                     </blockquote>
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-[3rem_minmax(0,1fr)_3rem] items-center gap-3 min-[901px]:hidden">
+                  <button
+                    type="button"
+                    onClick={() => handleStepEntry(-1)}
+                    aria-label="Previous field note"
+                    className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-black/18 text-white/78 transition duration-[var(--motion-base)] active:scale-[0.97] active:bg-white/[0.06]"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <div className="min-w-0 rounded-2xl border border-white/8 bg-black/14 px-3 py-2 text-center">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+                      {selectedEntryIndex + 1} / {filteredEntries.length}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-medium text-white/86">
+                      {selectedEntry.category}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleStepEntry(1)}
+                    aria-label="Next field note"
+                    className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-black/18 text-white/78 transition duration-[var(--motion-base)] active:scale-[0.97] active:bg-white/[0.06]"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="grid gap-3 min-[901px]:hidden">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-white/8 bg-black/16 px-3 py-1.5 text-sm text-white/82">
+                      {selectedEntry.category}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em]",
+                        getSignalTone(selectedEntry.signal),
+                      )}
+                    >
+                      {selectedEntry.signal}
+                    </span>
+                    <span className="rounded-full border border-white/8 bg-black/16 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                      {selectedEntry.status}
+                    </span>
+                  </div>
+                  <div className="rounded-[1.35rem] border border-white/8 bg-black/16 p-4">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
+                      Context
+                    </p>
+                    <p className="mt-3 text-sm leading-7 text-[color:var(--text-soft)]">
+                      {selectedEntry.context}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedEntry.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white/78"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {selectedEntry.tags.length > 3 ? (
+                      <span className="rounded-full border border-white/8 bg-black/16 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                        +{selectedEntry.tags.length - 3}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-3 min-[430px]:grid-cols-2">
+                    {[
+                      ["Impact", selectedEntry.runtimeImpact],
+                      ["Touched", selectedEntry.lastTouched],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-[1.25rem] border border-white/8 bg-black/16 px-4 py-3"
+                      >
+                        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+                          {label}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-white/88">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="hidden gap-3 sm:grid-cols-2 min-[901px]:grid">
                   {[
                     ["Category", selectedEntry.category],
                     ["Signal strength", selectedEntry.signal],
@@ -385,7 +555,7 @@ export function LogsView() {
                   ))}
                 </div>
 
-                <div className="rounded-[1.45rem] border border-white/8 bg-black/16 p-4">
+                <div className="rounded-[1.45rem] border border-white/8 bg-black/16 p-4 max-[900px]:hidden">
                   <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
                     Tags
                   </p>
@@ -401,7 +571,7 @@ export function LogsView() {
                   </div>
                 </div>
 
-                <div className="rounded-[1.45rem] border border-white/8 bg-black/16 p-4">
+                <div className="rounded-[1.45rem] border border-white/8 bg-black/16 p-4 max-[900px]:hidden">
                   <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
                     Context note
                   </p>
@@ -428,7 +598,19 @@ export function LogsView() {
           </aside>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-white/8 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/8 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)] min-[901px]:hidden">
+          <span className="rounded-full border border-white/8 bg-black/14 px-3 py-1">
+            Archive stable
+          </span>
+          <span className="rounded-full border border-white/8 bg-black/14 px-3 py-1">
+            {filteredEntries.length} visible
+          </span>
+          <span className="rounded-full border border-white/8 bg-black/14 px-3 py-1">
+            {statusLine}
+          </span>
+        </div>
+
+        <div className="hidden flex-wrap items-center gap-2 border-t border-white/8 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--text-muted)] min-[901px]:flex">
           <span className="rounded-full border border-white/8 bg-black/14 px-3 py-1">
             Archive integrity: Stable
           </span>

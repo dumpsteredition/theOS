@@ -399,6 +399,10 @@ export function BrokenBrumbleSwitch({
             whileTap={reducedMotion ? undefined : { rotate: 9, y: 1, scale: 0.98 }}
             transition={{ duration: reducedMotion ? 0.08 : 0.2, ease: "easeOut" }}
           >
+            <span
+              aria-hidden="true"
+              className="brumble-switch-language-filter__tape-hit-visual"
+            />
             <span className="sr-only">Remove tape from language filter knob</span>
           </motion.button>
         ) : null}
@@ -422,7 +426,7 @@ export function BrokenBrumbleSwitch({
     return (
       <div
         className={cn(
-          "flex items-center justify-end gap-3 sm:gap-4",
+          "brumble-switch-language-filter__assembly flex items-center justify-end gap-3 sm:gap-4",
           className,
         )}
       >

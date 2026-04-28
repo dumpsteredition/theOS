@@ -252,22 +252,22 @@ export function RecoveryTerminalOverlay({
         aria-describedby="recovery-terminal-description"
         tabIndex={-1}
         onKeyDown={handleShellKeyDown}
-        className="relative flex h-[100dvh] w-full flex-col px-4 py-4 font-mono text-[#84ffad] outline-none sm:px-6 sm:py-6"
+        className="relative flex h-[100dvh] w-full flex-col px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] font-mono text-[#84ffad] outline-none sm:px-6 sm:py-6"
       >
         <div className="absolute right-4 top-4 hidden rounded-full border border-[#2f6f47] bg-[#051109]/80 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-[#6cdd8f] sm:block">
           Recovery mode
         </div>
 
         <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden rounded-[1.6rem] border border-[#19412a] bg-[linear-gradient(180deg,rgba(2,10,5,0.96),rgba(1,6,4,0.99))] shadow-[0_0_0_1px_rgba(75,189,117,0.06),0_24px_120px_rgba(0,0,0,0.55)]">
-          <div className="sticky top-0 z-10 flex shrink-0 flex-col gap-2 border-b border-[#143320] bg-[#061006]/95 px-4 py-3 text-[0.72rem] uppercase tracking-[0.22em] text-[#58be79] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <span id="recovery-terminal-description" className="max-w-3xl">
+          <div className="sticky top-0 z-10 flex shrink-0 flex-col gap-2 border-b border-[#143320] bg-[#061006]/95 px-3 py-3 text-[0.68rem] uppercase leading-5 tracking-[0.16em] text-[#58be79] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:text-[0.72rem] sm:tracking-[0.22em]">
+            <span id="recovery-terminal-description" className="max-w-3xl break-words">
               Simulated IT recovery terminal. Press Enter to continue repair, or Escape to force restore.
             </span>
             <span>session: repair-in-progress</span>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
-            <div className="min-h-full rounded-[1.1rem] border border-[#102919] bg-[linear-gradient(180deg,rgba(2,15,8,0.76),rgba(1,9,5,0.94))] px-4 py-4 sm:px-5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-5">
+            <div className="min-h-full rounded-[1.1rem] border border-[#102919] bg-[linear-gradient(180deg,rgba(2,15,8,0.76),rgba(1,9,5,0.94))] px-3 py-4 sm:px-5">
               <div className="space-y-6">
                 <div
                   aria-live="polite"
@@ -308,10 +308,10 @@ export function RecoveryTerminalOverlay({
 
                 {isAwaitingRepairConfirm || phase === "repairRunning" || phase === "repairComplete" ? (
                   <div className="space-y-3 border-t border-[#102d1b] pt-4">
-                    <p className="text-[0.78rem] uppercase tracking-[0.22em] text-[#56bf78]">
+                    <p className="text-[0.72rem] uppercase leading-5 tracking-[0.18em] text-[#56bf78] sm:text-[0.78rem] sm:tracking-[0.22em]">
                       Awaiting operator confirmation
                     </p>
-                    <p className="text-[0.9rem] font-medium text-[#91ffb8] sm:text-[1rem]">
+                    <p className="text-[0.86rem] font-medium leading-6 text-[#91ffb8] sm:text-[1rem]">
                       PRESS ENTER TO LET IT FIX THIS
                       <TerminalCursor />
                     </p>
@@ -320,9 +320,9 @@ export function RecoveryTerminalOverlay({
                       type="button"
                       onClick={handleRepairConfirm}
                       disabled={phase !== "awaitingRepairConfirm"}
-                      className="inline-flex max-w-fit items-center gap-2 rounded-[0.45rem] border border-[#245e3a] bg-[#051109]/88 px-3 py-2 text-left text-[0.78rem] uppercase tracking-[0.18em] text-[#91ffb8] transition hover:border-[#4ab672] hover:bg-[#09170d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#84ffad]/45 disabled:cursor-not-allowed disabled:border-[#173c26] disabled:bg-[#041008]/55 disabled:text-[#5aa276]"
+                      className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-[0.45rem] border border-[#245e3a] bg-[#051109]/88 px-3 py-2 text-left text-[0.72rem] uppercase leading-5 tracking-[0.14em] text-[#91ffb8] transition hover:border-[#4ab672] hover:bg-[#09170d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#84ffad]/45 disabled:cursor-not-allowed disabled:border-[#173c26] disabled:bg-[#041008]/55 disabled:text-[#5aa276] sm:max-w-fit sm:text-[0.78rem] sm:tracking-[0.18em]"
                     >
-                      <span>{">"} Press Enter / Tap to repair</span>
+                      <span className="break-words">{">"} Press Enter / Tap to repair</span>
                       {phase === "awaitingRepairConfirm" ? <TerminalCursor /> : null}
                     </button>
                   </div>
@@ -353,7 +353,7 @@ export function RecoveryTerminalOverlay({
             </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-[#143320] bg-[#061006]/95 px-4 py-3 text-[0.72rem] text-[#56bf78] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-[#143320] bg-[#061006]/95 px-3 py-3 text-[0.72rem] leading-5 text-[#56bf78] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <p>
               {isAwaitingRepairConfirm
                 ? "IT is waiting for confirmation before touching anything else."
