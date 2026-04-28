@@ -252,22 +252,22 @@ export function RecoveryTerminalOverlay({
         aria-describedby="recovery-terminal-description"
         tabIndex={-1}
         onKeyDown={handleShellKeyDown}
-        className="relative flex h-full w-full flex-col justify-between px-4 py-5 font-mono text-[#84ffad] outline-none sm:px-6 sm:py-6"
+        className="relative flex h-[100dvh] w-full flex-col px-4 py-4 font-mono text-[#84ffad] outline-none sm:px-6 sm:py-6"
       >
         <div className="absolute right-4 top-4 hidden rounded-full border border-[#2f6f47] bg-[#051109]/80 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-[#6cdd8f] sm:block">
           Recovery mode
         </div>
 
-        <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-[1.6rem] border border-[#19412a] bg-[linear-gradient(180deg,rgba(2,10,5,0.96),rgba(1,6,4,0.99))] shadow-[0_0_0_1px_rgba(75,189,117,0.06),0_24px_120px_rgba(0,0,0,0.55)]">
-          <div className="flex flex-col gap-2 border-b border-[#143320] px-4 py-3 text-[0.72rem] uppercase tracking-[0.22em] text-[#58be79] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden rounded-[1.6rem] border border-[#19412a] bg-[linear-gradient(180deg,rgba(2,10,5,0.96),rgba(1,6,4,0.99))] shadow-[0_0_0_1px_rgba(75,189,117,0.06),0_24px_120px_rgba(0,0,0,0.55)]">
+          <div className="sticky top-0 z-10 flex shrink-0 flex-col gap-2 border-b border-[#143320] bg-[#061006]/95 px-4 py-3 text-[0.72rem] uppercase tracking-[0.22em] text-[#58be79] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <span id="recovery-terminal-description" className="max-w-3xl">
               Simulated IT recovery terminal. Press Enter to continue repair, or Escape to force restore.
             </span>
             <span>session: repair-in-progress</span>
           </div>
 
-          <div className="flex-1 overflow-hidden px-4 py-4 sm:px-5 sm:py-5">
-            <div className="h-full overflow-hidden rounded-[1.1rem] border border-[#102919] bg-[linear-gradient(180deg,rgba(2,15,8,0.76),rgba(1,9,5,0.94))] px-4 py-4 sm:px-5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
+            <div className="min-h-full rounded-[1.1rem] border border-[#102919] bg-[linear-gradient(180deg,rgba(2,15,8,0.76),rgba(1,9,5,0.94))] px-4 py-4 sm:px-5">
               <div className="space-y-6">
                 <div
                   aria-live="polite"
@@ -353,7 +353,7 @@ export function RecoveryTerminalOverlay({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-[#143320] px-4 py-3 text-[0.72rem] text-[#56bf78] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-[#143320] bg-[#061006]/95 px-4 py-3 text-[0.72rem] text-[#56bf78] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <p>
               {isAwaitingRepairConfirm
                 ? "IT is waiting for confirmation before touching anything else."
