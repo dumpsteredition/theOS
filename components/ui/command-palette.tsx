@@ -44,14 +44,21 @@ export function CommandPaletteProvider({
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const restoreFocusTimeoutRef = useRef<number | null>(null);
+  const feedbackTimeoutRef = useRef<number | null>(null);
 
   const close = useCallback(() => {
     setIsOpen(false);
     setQuery("");
     setActiveIndex(0);
 
-    window.setTimeout(() => {
+    if (restoreFocusTimeoutRef.current !== null) {
+      window.clearTimeout(restoreFocusTimeoutRef.current);
+    }
+
+    restoreFocusTimeoutRef.current = window.setTimeout(() => {
       previouslyFocusedRef.current?.focus();
+      restoreFocusTimeoutRef.current = null;
     }, 0);
   }, []);
 
@@ -157,8 +164,13 @@ export function CommandPaletteProvider({
 
       if (command.action === "open-feedback") {
         close();
-        window.setTimeout(() => {
+        if (feedbackTimeoutRef.current !== null) {
+          window.clearTimeout(feedbackTimeoutRef.current);
+        }
+
+        feedbackTimeoutRef.current = window.setTimeout(() => {
           openFeedback();
+          feedbackTimeoutRef.current = null;
         }, 0);
         return;
       }
@@ -173,6 +185,18 @@ export function CommandPaletteProvider({
     },
     [close, filteredCommands, openFeedback, pathname, pushToast, router],
   );
+
+  useEffect(() => {
+    return () => {
+      if (restoreFocusTimeoutRef.current !== null) {
+        window.clearTimeout(restoreFocusTimeoutRef.current);
+      }
+
+      if (feedbackTimeoutRef.current !== null) {
+        window.clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const flattenedIds = filteredCommands.map((command) => command.id);
   const safeActiveIndex =

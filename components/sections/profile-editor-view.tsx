@@ -1089,6 +1089,8 @@ function ProfileReviewModal({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const initialFocusTimeoutRef = useRef<number | null>(null);
+  const restoreFocusTimeoutRef = useRef<number | null>(null);
 
   const statusLine = hasAboutDraft
     ? profileContent.playful.saveReview.aboutEdited
@@ -1108,8 +1110,19 @@ function ProfileReviewModal({
     };
 
     window.addEventListener("keydown", onKeyDown);
-    window.setTimeout(() => closeButtonRef.current?.focus(), 0);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    initialFocusTimeoutRef.current = window.setTimeout(() => {
+      closeButtonRef.current?.focus();
+      initialFocusTimeoutRef.current = null;
+    }, 0);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+
+      if (initialFocusTimeoutRef.current !== null) {
+        window.clearTimeout(initialFocusTimeoutRef.current);
+        initialFocusTimeoutRef.current = null;
+      }
+    };
   }, [isOpen, onClose]);
 
   useEffect(() => {
@@ -1117,8 +1130,27 @@ function ProfileReviewModal({
       return;
     }
 
-    window.setTimeout(() => previouslyFocusedRef.current?.focus(), 0);
+    if (restoreFocusTimeoutRef.current !== null) {
+      window.clearTimeout(restoreFocusTimeoutRef.current);
+    }
+
+    restoreFocusTimeoutRef.current = window.setTimeout(() => {
+      previouslyFocusedRef.current?.focus();
+      restoreFocusTimeoutRef.current = null;
+    }, 0);
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (initialFocusTimeoutRef.current !== null) {
+        window.clearTimeout(initialFocusTimeoutRef.current);
+      }
+
+      if (restoreFocusTimeoutRef.current !== null) {
+        window.clearTimeout(restoreFocusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   function trapFocus(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Tab") {

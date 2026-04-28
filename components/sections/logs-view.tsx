@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpenText, ChevronRight, FileText, Folder, ScanSearch, Search } from "lucide-react";
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 import {
   systemLogCategories,
@@ -57,22 +57,33 @@ export function LogsView() {
   const deferredSearchValue = useDeferredValue(searchValue);
   const normalizedQuery = deferredSearchValue.trim().toLowerCase();
 
-  const searchMatchedEntries = systemLogEntries.filter((entry) =>
-    matchesLogQuery(entry, normalizedQuery),
+  const searchMatchedEntries = useMemo(
+    () =>
+      systemLogEntries.filter((entry) =>
+        matchesLogQuery(entry, normalizedQuery),
+      ),
+    [normalizedQuery],
   );
 
-  const categoryCounts = systemLogCategories.reduce<Record<(typeof systemLogCategories)[number], number>>(
-    (counts, category) => {
-      counts[category] = searchMatchedEntries.filter((entry) => entry.category === category).length;
-      return counts;
-    },
-    {} as Record<(typeof systemLogCategories)[number], number>,
+  const categoryCounts = useMemo(
+    () =>
+      systemLogCategories.reduce<Record<(typeof systemLogCategories)[number], number>>(
+        (counts, category) => {
+          counts[category] = searchMatchedEntries.filter((entry) => entry.category === category).length;
+          return counts;
+        },
+        {} as Record<(typeof systemLogCategories)[number], number>,
+      ),
+    [searchMatchedEntries],
   );
 
-  const filteredEntries =
-    activeFilter === "All Logs"
-      ? searchMatchedEntries
-      : searchMatchedEntries.filter((entry) => entry.category === activeFilter);
+  const filteredEntries = useMemo(
+    () =>
+      activeFilter === "All Logs"
+        ? searchMatchedEntries
+        : searchMatchedEntries.filter((entry) => entry.category === activeFilter),
+    [activeFilter, searchMatchedEntries],
+  );
 
   const selectedEntry =
     filteredEntries.find((entry) => entry.id === selectedEntryId) ?? filteredEntries[0] ?? null;

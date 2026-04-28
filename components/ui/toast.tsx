@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -50,6 +51,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     },
     [dismissToast],
   );
+
+  useEffect(() => {
+    const timeouts = timeoutMap.current;
+
+    return () => {
+      timeouts.forEach((timeout) => clearTimeout(timeout));
+      timeouts.clear();
+    };
+  }, []);
 
   const value = useMemo(() => ({ pushToast }), [pushToast]);
 

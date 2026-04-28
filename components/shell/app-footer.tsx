@@ -178,11 +178,18 @@ export function AppFooter() {
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const feedbackTimeoutRef = useRef<number | null>(null);
   const signatureEchoTimeoutRef = useRef<number | null>(null);
+  const restoreFocusTimeoutRef = useRef<number | null>(null);
+  const initialFocusTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isTraceOpen) {
-      window.setTimeout(() => {
+      if (restoreFocusTimeoutRef.current !== null) {
+        window.clearTimeout(restoreFocusTimeoutRef.current);
+      }
+
+      restoreFocusTimeoutRef.current = window.setTimeout(() => {
         previouslyFocusedRef.current?.focus();
+        restoreFocusTimeoutRef.current = null;
       }, 0);
       return;
     }
@@ -195,12 +202,18 @@ export function AppFooter() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    window.setTimeout(() => {
+    initialFocusTimeoutRef.current = window.setTimeout(() => {
       closeButtonRef.current?.focus();
+      initialFocusTimeoutRef.current = null;
     }, 0);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+
+      if (initialFocusTimeoutRef.current !== null) {
+        window.clearTimeout(initialFocusTimeoutRef.current);
+        initialFocusTimeoutRef.current = null;
+      }
     };
   }, [isTraceOpen]);
 
@@ -212,6 +225,14 @@ export function AppFooter() {
 
       if (signatureEchoTimeoutRef.current !== null) {
         window.clearTimeout(signatureEchoTimeoutRef.current);
+      }
+
+      if (restoreFocusTimeoutRef.current !== null) {
+        window.clearTimeout(restoreFocusTimeoutRef.current);
+      }
+
+      if (initialFocusTimeoutRef.current !== null) {
+        window.clearTimeout(initialFocusTimeoutRef.current);
       }
     };
   }, []);

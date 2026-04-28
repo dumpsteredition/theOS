@@ -538,7 +538,10 @@ export function InboxView() {
   }, []);
 
   const scheduleTimeout = (callback: () => void, delay: number) => {
-    const timeoutId = window.setTimeout(callback, delay);
+    const timeoutId = window.setTimeout(() => {
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId);
+      callback();
+    }, delay);
     timeoutIdsRef.current.push(timeoutId);
   };
 
