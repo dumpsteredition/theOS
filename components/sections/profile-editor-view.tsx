@@ -1179,7 +1179,7 @@ function ProfileReviewModal({
   return (
     <AnimatePresence>
       {isOpen ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0.08 : 0.16 }} className="fixed inset-0 z-[95] bg-[rgba(3,5,10,0.72)] px-4 py-6 backdrop-blur-md sm:px-6" onClick={onClose}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0.08 : 0.16 }} className="fixed inset-0 z-[95] overflow-y-auto bg-[rgba(3,5,10,0.72)] px-4 py-6 backdrop-blur-md sm:px-6" onClick={onClose}>
           <motion.div
             ref={panelRef}
             role="dialog"
@@ -1190,7 +1190,7 @@ function ProfileReviewModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.985 }}
             transition={{ duration: reducedMotion ? 0.08 : 0.2, ease: "easeOut" }}
-            className="mx-auto mt-[10vh] w-full max-w-[34rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)]"
+            className="mx-auto mt-[10vh] flex max-h-[calc(100dvh-2rem)] w-full max-w-[34rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)]"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={trapFocus}
           >
@@ -1213,7 +1213,7 @@ function ProfileReviewModal({
               </div>
             </div>
 
-            <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+            <div className="min-h-0 space-y-5 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
               <div className="rounded-[1.45rem] border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] p-4">
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--accent-strong)]" />

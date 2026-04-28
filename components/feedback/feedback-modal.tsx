@@ -491,7 +491,7 @@ export function FeedbackModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: reducedMotion ? 0.08 : 0.16 }}
-          className="fixed inset-0 z-[95] bg-[rgba(3,5,10,0.72)] px-4 py-6 backdrop-blur-md sm:px-6"
+          className="fixed inset-0 z-[95] overflow-y-auto bg-[rgba(3,5,10,0.72)] px-4 py-6 backdrop-blur-md sm:px-6"
           onClick={onClose}
         >
           <motion.div
@@ -515,7 +515,7 @@ export function FeedbackModal({
               reducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.985 }
             }
             transition={{ duration: reducedMotion ? 0.08 : 0.2, ease: "easeOut" }}
-            className="mx-auto mt-[8vh] w-full max-w-[36rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)]"
+            className="mx-auto mt-[8vh] flex max-h-[calc(100dvh-2rem)] w-full max-w-[36rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)]"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={trapFocus}
           >
@@ -556,7 +556,7 @@ export function FeedbackModal({
               </div>
             </div>
 
-            <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+            <div className="min-h-0 space-y-5 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
               <div className="rounded-[1.45rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(8,12,18,0.9))] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>

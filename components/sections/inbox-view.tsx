@@ -1502,7 +1502,7 @@ function ConversationMessage({
                 exit={{ opacity: 0, y: 6, scale: 0.98 }}
                 transition={{ duration: 0.16, ease: "easeOut" }}
                 className={cn(
-                  "absolute bottom-full z-20 mb-2 flex items-center gap-1 rounded-full border border-white/10 bg-[rgba(8,12,19,0.98)] p-1.5",
+                  "absolute bottom-full z-20 mb-2 flex max-w-[calc(100vw-3rem)] flex-wrap items-center justify-center gap-1 rounded-[1.1rem] border border-white/10 bg-[rgba(8,12,19,0.98)] p-1.5 sm:rounded-full",
                   isKyle ? "right-0" : "left-0",
                 )}
               >

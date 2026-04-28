@@ -400,7 +400,7 @@ export function AppFooter() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0.08 : 0.16 }}
-            className="fixed inset-0 z-[94] bg-[rgba(4,6,10,0.74)] px-4 py-6 backdrop-blur-md sm:px-6"
+            className="fixed inset-0 z-[94] overflow-y-auto bg-[rgba(4,6,10,0.74)] px-4 py-6 backdrop-blur-md sm:px-6"
             onClick={closeTrace}
           >
             <motion.div
@@ -420,7 +420,7 @@ export function AppFooter() {
                   : { opacity: 0, y: 12, scale: 0.988 }
               }
               transition={{ duration: reducedMotion ? 0.08 : 0.2, ease: "easeOut" }}
-              className="mx-auto mt-[8vh] w-full max-w-[37rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)]"
+              className="mx-auto mt-[8vh] flex max-h-[calc(100dvh-2rem)] w-full max-w-[37rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,32,0.99),rgba(9,13,19,0.99))] shadow-[0_44px_120px_rgba(0,0,0,0.45)]"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="relative overflow-hidden border-b border-white/8 px-5 py-5 sm:px-6">
@@ -460,7 +460,7 @@ export function AppFooter() {
                 </div>
               </div>
 
-              <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
+              <div className="min-h-0 space-y-6 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
                 <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(8,12,18,0.9))] p-5 sm:p-6">
                   <p className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/36">
                     Trace note

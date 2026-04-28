@@ -279,7 +279,7 @@ export function CommandPaletteProvider({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0.08 : 0.16 }}
-            className="fixed inset-0 z-[90] bg-black/55 px-4 py-6 backdrop-blur-md sm:px-6"
+            className="fixed inset-0 z-[90] overflow-y-auto bg-black/55 px-4 py-6 backdrop-blur-md sm:px-6"
             onClick={close}
           >
             <motion.div
@@ -295,7 +295,7 @@ export function CommandPaletteProvider({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.98 }}
               transition={{ duration: reducedMotion ? 0.08 : 0.18, ease: "easeOut" }}
-              className="mx-auto mt-[8vh] flex w-full max-w-3xl flex-col overflow-hidden rounded-[var(--radius-2xl)] border border-white/10 bg-[linear-gradient(180deg,rgba(15,19,27,0.98),rgba(10,13,19,0.98))] shadow-[0_48px_120px_rgba(0,0,0,0.42)]"
+              className="mx-auto mt-[8vh] flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[var(--radius-2xl)] border border-white/10 bg-[linear-gradient(180deg,rgba(15,19,27,0.98),rgba(10,13,19,0.98))] shadow-[0_48px_120px_rgba(0,0,0,0.42)]"
               onClick={(event) => event.stopPropagation()}
               onKeyDown={trapFocus}
             >
@@ -322,7 +322,7 @@ export function CommandPaletteProvider({
                 </div>
               </div>
 
-              <div className="max-h-[60vh] overflow-y-auto p-3">
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
                 {filteredCommands.length === 0 ? (
                   <div className="rounded-[var(--radius-xl)] border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center">
                     <p className="text-sm font-medium text-white">
