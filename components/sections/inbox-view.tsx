@@ -1,0 +1,1635 @@
+"use client";
+
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  CheckCircle2,
+  LoaderCircle,
+  MessageSquareText,
+  SendHorizonal,
+  SmilePlus,
+  UserPlus,
+  X,
+} from "lucide-react";
+
+import {
+  getInboxSmartReply,
+  inboxReactionOptions,
+  inboxThreadSeeds,
+  type InboxMessageSeed,
+  type InboxThreadSeed,
+} from "@/data/inbox-sim";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
+
+type RailTone = "accent" | "cool" | "warm" | "neutral";
+
+type InboxMessage = InboxMessageSeed & {
+  reactions: string[];
+  shareState?: string;
+};
+
+type InboxThread = Omit<InboxThreadSeed, "messages"> & {
+  messages: InboxMessage[];
+  draft: string;
+  ambientMessagesSent: number;
+  isTyping: boolean;
+  pendingReply: boolean;
+};
+
+type ContactLeadValues = {
+  name: string;
+  email: string;
+  companyOrProject: string;
+  whatWorkingOn: string;
+  helpNeeded: string;
+  bestWayToReach: string;
+  website: string;
+};
+
+type ContactLeadErrors = Partial<Record<keyof ContactLeadValues, string>>;
+
+const sectionMotion = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const },
+};
+
+const previewClampStyle: CSSProperties = {
+  display: "-webkit-box",
+  overflow: "hidden",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+};
+
+const initialContactLeadValues: ContactLeadValues = {
+  name: "",
+  email: "",
+  companyOrProject: "",
+  whatWorkingOn: "",
+  helpNeeded: "",
+  bestWayToReach: "",
+  website: "",
+};
+
+const ambientMessageDelayMinMs = 18000;
+const ambientMessageDelayMaxMs = 34000;
+const maxAmbientMessagesPerSession = 4;
+
+function createInitialReplyCounts() {
+  return inboxThreadSeeds.reduce<Record<string, number>>((counts, thread) => {
+    counts[thread.id] = 0;
+    return counts;
+  }, {});
+}
+
+function createInitialThreads(): InboxThread[] {
+  return inboxThreadSeeds.map((thread) => ({
+    ...thread,
+    draft: thread.draft ?? "",
+    ambientMessagesSent: 0,
+    isTyping: false,
+    pendingReply: false,
+    messages: thread.messages.map((message) => ({
+      ...message,
+      reactions: [...(message.reactions ?? [])],
+    })),
+  }));
+}
+
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
+function formatDisplayName(name: string) {
+  const parts = name
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "";
+  }
+
+  if (parts.length === 1) {
+    return parts[0];
+  }
+
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+}
+
+function buildContactThread(values: ContactLeadValues): InboxThread {
+  const nowLabel = formatNowLabel();
+  const threadId = `contact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const contactName = values.name.trim();
+  const displayName = formatDisplayName(contactName);
+  const whatWorkingOn = values.whatWorkingOn.trim();
+  const helpNeeded = values.helpNeeded.trim();
+  const summary = [whatWorkingOn, helpNeeded, "Kyle has the real version now."]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    id: threadId,
+    name: displayName || contactName,
+    role: values.companyOrProject.trim() || "New contact",
+    descriptor: "Kyle has the real version now.",
+    initials: getInitials(displayName || contactName) || "NC",
+    topic: "New conversation",
+    statusLabel: "Contact request sent",
+    railTime: "Now",
+    unreadCount: 0,
+    draft: "",
+    accent: "#73e0a9",
+    softAccent: "rgba(115, 224, 169, 0.16)",
+    borderAccent: "rgba(115, 224, 169, 0.24)",
+    ambientMessagesSent: 0,
+    isTyping: false,
+    pendingReply: false,
+    behavior: {
+      kind: "offline",
+      label: "New contact",
+      summary: "Kyle has the real version now. Future messages stay local unless you send them.",
+      replies: false,
+      typing: false,
+      minDelayMs: 0,
+      maxDelayMs: 0,
+      replyPool: [],
+    },
+    messages: [
+      {
+        id: createMessageId(threadId),
+        sender: "contact",
+        body: summary,
+        sentAt: nowLabel,
+        reactions: [],
+        shareState: "Shared on submit",
+      },
+    ],
+  };
+}
+
+function getLastMessage(thread: InboxThread) {
+  return thread.messages[thread.messages.length - 1] ?? null;
+}
+
+function getThreadState(thread: InboxThread) {
+  const lastMessage = getLastMessage(thread);
+
+  if (thread.isTyping) {
+    return { label: "Typing", tone: "accent" as const };
+  }
+
+  if (thread.unreadCount > 0) {
+    return {
+      label: thread.unreadCount > 1 ? `${thread.unreadCount} unread` : "Unread",
+      tone: "accent" as const,
+    };
+  }
+
+  if (thread.draft.trim().length > 0) {
+    return { label: "Draft", tone: "warm" as const };
+  }
+
+  if (lastMessage?.sender === "kyle" && thread.behavior.kind === "busy") {
+    return { label: "Busy", tone: "warm" as const };
+  }
+
+  if (lastMessage?.sender === "kyle" && thread.behavior.kind === "offline") {
+    return { label: "Offline", tone: "neutral" as const };
+  }
+
+  if (lastMessage?.sender === "kyle") {
+    return { label: "Waiting", tone: "cool" as const };
+  }
+
+  if (thread.behavior.kind === "offline") {
+    return { label: "Stale", tone: "neutral" as const };
+  }
+
+  if (thread.behavior.kind === "low-energy") {
+    return { label: "Answered", tone: "neutral" as const };
+  }
+
+  return { label: "Active", tone: "cool" as const };
+}
+
+function getThreadPreview(thread: InboxThread) {
+  if (thread.isTyping) {
+    return `${thread.name.split(" ")[0]} is typing...`;
+  }
+
+  if (thread.draft.trim().length > 0) {
+    return `Draft: ${thread.draft.trim()}`;
+  }
+
+  return getLastMessage(thread)?.body.replace(/\s+/g, " ").trim() ?? "";
+}
+
+function getToneClasses(tone: RailTone) {
+  switch (tone) {
+    case "accent":
+      return "border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]";
+    case "cool":
+      return "border-[color:var(--cool-accent-border)] bg-[color:var(--cool-accent-soft)] text-white/88";
+    case "warm":
+      return "border-[rgba(255,174,112,0.22)] bg-[rgba(255,174,112,0.14)] text-[#ffd8b8]";
+    default:
+      return "border-white/10 bg-white/[0.05] text-[color:var(--text-muted)]";
+  }
+}
+
+function moveThreadToFront(threads: InboxThread[], threadId: string) {
+  const thread = threads.find((item) => item.id === threadId);
+
+  if (!thread) {
+    return threads;
+  }
+
+  return [thread, ...threads.filter((item) => item.id !== threadId)];
+}
+
+function updateThread(
+  threads: InboxThread[],
+  threadId: string,
+  updater: (thread: InboxThread) => InboxThread,
+  moveToTop = false,
+) {
+  const nextThreads = threads.map((thread) =>
+    thread.id === threadId ? updater(thread) : thread,
+  );
+
+  return moveToTop ? moveThreadToFront(nextThreads, threadId) : nextThreads;
+}
+
+function formatNowLabel() {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date());
+}
+
+function createMessageId(threadId: string) {
+  return `${threadId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getRandomDelay(minDelayMs: number, maxDelayMs: number) {
+  if (maxDelayMs <= minDelayMs) {
+    return minDelayMs;
+  }
+
+  return Math.round(Math.random() * (maxDelayMs - minDelayMs) + minDelayMs);
+}
+
+function renderMessageBody(body: string) {
+  return body.split("\n\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>);
+}
+
+function validateContactLead(values: ContactLeadValues): ContactLeadErrors {
+  const errors: ContactLeadErrors = {};
+
+  if (!values.name.trim()) {
+    errors.name = "Add a real name.";
+  }
+
+  if (!values.email.trim()) {
+    errors.email = "Add an email address.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+    errors.email = "Use a valid email address.";
+  }
+
+  if (!values.whatWorkingOn.trim()) {
+    errors.whatWorkingOn = "Say what you are working on.";
+  }
+
+  if (!values.helpNeeded.trim()) {
+    errors.helpNeeded = "Say what kind of help would be useful.";
+  }
+
+  return errors;
+}
+
+function buildMessageShareLabel(
+  status: "sharing" | "shared" | "local-only" | "failed",
+) {
+  switch (status) {
+    case "sharing":
+      return "Sharing with Kyle";
+    case "shared":
+      return "Shared with Kyle";
+    case "local-only":
+      return "Sent locally only";
+    default:
+      return "Share failed";
+  }
+}
+
+export function InboxView() {
+  const reducedMotion = useReducedMotion();
+  const { pushToast } = useToast();
+  const [threads, setThreads] = useState<InboxThread[]>(() => createInitialThreads());
+  const [replyCountsByThreadId, setReplyCountsByThreadId] =
+    useState<Record<string, number>>(() => createInitialReplyCounts());
+  const [selectedThreadId, setSelectedThreadId] = useState(inboxThreadSeeds[0]?.id ?? "");
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [contactLeadValues, setContactLeadValues] =
+    useState<ContactLeadValues>(initialContactLeadValues);
+  const [contactLeadErrors, setContactLeadErrors] = useState<ContactLeadErrors>({});
+  const [contactSubmitError, setContactSubmitError] = useState<string | null>(null);
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
+  const [activeReactionTarget, setActiveReactionTarget] = useState<{
+    threadId: string;
+    messageId: string;
+  } | null>(null);
+  const [, startThreadSwitch] = useTransition();
+  const conversationViewportRef = useRef<HTMLDivElement | null>(null);
+  const conversationShellRef = useRef<HTMLDivElement | null>(null);
+  const selectedThreadIdRef = useRef(selectedThreadId);
+  const replyCountsRef = useRef(replyCountsByThreadId);
+  const threadsRef = useRef<InboxThread[]>(threads);
+  const timeoutIdsRef = useRef<number[]>([]);
+  const ambientMessagesSentRef = useRef(0);
+
+  useEffect(() => {
+    selectedThreadIdRef.current = selectedThreadId;
+  }, [selectedThreadId]);
+
+  useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
+  useEffect(() => {
+    replyCountsRef.current = replyCountsByThreadId;
+  }, [replyCountsByThreadId]);
+
+  useEffect(() => {
+    const timeoutIds = timeoutIdsRef.current;
+
+    return () => {
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeReactionTarget) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+
+      if (target?.closest("[data-reaction-anchor='true']")) {
+        return;
+      }
+
+      setActiveReactionTarget(null);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [activeReactionTarget]);
+
+  useEffect(() => {
+    if (!isAddContactOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (isSubmittingContact) {
+          return;
+        }
+
+        setIsAddContactOpen(false);
+        setContactLeadErrors({});
+        setContactSubmitError(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAddContactOpen, isSubmittingContact]);
+
+  const selectedThread =
+    threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
+  const selectedMessageCount = selectedThread?.messages.length ?? 0;
+  const selectedIsTyping = selectedThread?.isTyping ?? false;
+
+  useEffect(() => {
+    const viewport = conversationViewportRef.current;
+
+    if (!viewport) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [selectedThreadId, selectedMessageCount, selectedIsTyping, reducedMotion]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    let ambientTimeoutId: number | null = null;
+
+    const scheduleAmbientMessage = () => {
+      if (isCancelled || ambientMessagesSentRef.current >= maxAmbientMessagesPerSession) {
+        return;
+      }
+
+      ambientTimeoutId = window.setTimeout(() => {
+        if (isCancelled) {
+          return;
+        }
+
+        const eligibleThreads = threadsRef.current.filter(
+          (thread) =>
+            (thread.ambientMessages?.length ?? 0) > 0 &&
+            thread.ambientMessagesSent < (thread.ambientLimit ?? thread.ambientMessages?.length ?? 0) &&
+            !thread.isTyping &&
+            !thread.pendingReply,
+        );
+
+        if (eligibleThreads.length === 0) {
+          return;
+        }
+
+        const thread =
+          eligibleThreads[Math.floor(Math.random() * eligibleThreads.length)];
+        const ambientMessages = thread.ambientMessages ?? [];
+        const nextAmbientMessage =
+          ambientMessages[thread.ambientMessagesSent % ambientMessages.length];
+
+        if (!nextAmbientMessage) {
+          scheduleAmbientMessage();
+          return;
+        }
+
+        ambientMessagesSentRef.current += 1;
+
+        setThreads((current) =>
+          updateThread(
+            current,
+            thread.id,
+            (currentThread) => ({
+              ...currentThread,
+              ambientMessagesSent: currentThread.ambientMessagesSent + 1,
+              railTime: "Now",
+              unreadCount:
+                selectedThreadIdRef.current === currentThread.id
+                  ? 0
+                  : currentThread.unreadCount + 1,
+              messages: [
+                ...currentThread.messages,
+                {
+                  id: createMessageId(`${currentThread.id}-ambient`),
+                  sender: "contact",
+                  body: nextAmbientMessage,
+                  sentAt: formatNowLabel(),
+                  reactions: [],
+                },
+              ],
+            }),
+            true,
+          ),
+        );
+
+        scheduleAmbientMessage();
+      }, getRandomDelay(ambientMessageDelayMinMs, ambientMessageDelayMaxMs));
+    };
+
+    scheduleAmbientMessage();
+
+    return () => {
+      isCancelled = true;
+
+      if (ambientTimeoutId) {
+        window.clearTimeout(ambientTimeoutId);
+      }
+    };
+  }, []);
+
+  const scheduleTimeout = (callback: () => void, delay: number) => {
+    const timeoutId = window.setTimeout(callback, delay);
+    timeoutIdsRef.current.push(timeoutId);
+  };
+
+  const submitChatCapture = async (
+    thread: InboxThread,
+    messageId: string,
+    visitorMessage: string,
+  ) => {
+    try {
+      const response = await fetch("/api/inbox-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          source: "inbox-chat",
+          threadId: thread.id,
+          threadName: thread.name,
+          visitorMessage,
+          timestamp: new Date().toISOString(),
+          pagePath: window.location.pathname,
+          userAgent: navigator.userAgent,
+        }),
+      });
+
+      if (response.ok) {
+        setThreads((current) =>
+          updateThread(current, thread.id, (currentThread) => ({
+            ...currentThread,
+            messages: currentThread.messages.map((message) =>
+              message.id === messageId
+                ? { ...message, shareState: buildMessageShareLabel("shared") }
+                : message,
+            ),
+          })),
+        );
+
+        pushToast({
+          title: "Message shared",
+          body: "A real copy of that sent message was forwarded to Kyle.",
+        });
+        return;
+      }
+
+      setThreads((current) =>
+        updateThread(current, thread.id, (currentThread) => ({
+          ...currentThread,
+          messages: currentThread.messages.map((message) =>
+            message.id === messageId
+              ? { ...message, shareState: buildMessageShareLabel("local-only") }
+              : message,
+          ),
+        })),
+      );
+
+      pushToast({
+        title: "Sent locally only",
+        body: "The message stayed in the local surface because Inbox capture is not configured yet.",
+      });
+    } catch {
+      setThreads((current) =>
+        updateThread(current, thread.id, (currentThread) => ({
+          ...currentThread,
+          messages: currentThread.messages.map((message) =>
+            message.id === messageId
+              ? { ...message, shareState: buildMessageShareLabel("failed") }
+              : message,
+          ),
+        })),
+      );
+
+      pushToast({
+        title: "Share failed",
+        body: "The message still appears locally, but forwarding it to Kyle did not work.",
+      });
+    }
+  };
+
+  const submitContactLead = async (values: ContactLeadValues) => {
+    try {
+      const response = await fetch("/api/inbox-contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          source: "add-contact",
+          name: values.name.trim(),
+          email: values.email.trim(),
+          companyOrProject: values.companyOrProject.trim() || undefined,
+          whatWorkingOn: values.whatWorkingOn.trim(),
+          helpNeeded: values.helpNeeded.trim(),
+          bestWayToReach: values.bestWayToReach.trim() || undefined,
+          timestamp: new Date().toISOString(),
+          pagePath: window.location.pathname,
+          userAgent: navigator.userAgent,
+          website: values.website.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        pushToast({
+          title: "Contact request sent",
+          body: "Kyle has the real version now.",
+        });
+        return true;
+      }
+
+      pushToast({
+        title: "Couldn’t send that yet",
+        body: "Try again in a minute.",
+      });
+      return false;
+    } catch {
+      pushToast({
+        title: "Couldn’t send that yet",
+        body: "Try again in a minute.",
+      });
+      return false;
+    }
+  };
+
+  const handleSelectThread = (threadId: string) => {
+    setActiveReactionTarget(null);
+    setIsAddContactOpen(false);
+    setThreads((current) =>
+      updateThread(current, threadId, (thread) => ({ ...thread, unreadCount: 0 })),
+    );
+    startThreadSwitch(() => setSelectedThreadId(threadId));
+
+    if (window.innerWidth < 1280) {
+      window.requestAnimationFrame(() => {
+        conversationShellRef.current?.scrollIntoView({
+          behavior: reducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    }
+  };
+
+  const handleDraftChange = (nextDraft: string) => {
+    if (!selectedThread) {
+      return;
+    }
+
+    setThreads((current) =>
+      updateThread(current, selectedThread.id, (thread) => ({
+        ...thread,
+        draft: nextDraft,
+      })),
+    );
+  };
+
+  const handleContactFieldChange = (
+    field: keyof ContactLeadValues,
+    value: string,
+  ) => {
+    setContactLeadValues((current) => ({ ...current, [field]: value }));
+    setContactLeadErrors((current) => ({ ...current, [field]: undefined }));
+    setContactSubmitError(null);
+  };
+
+  const handleToggleReactionPicker = (threadId: string, messageId: string) => {
+    setActiveReactionTarget((current) =>
+      current?.threadId === threadId && current.messageId === messageId
+        ? null
+        : { threadId, messageId },
+    );
+  };
+
+  const handleReactToMessage = (threadId: string, messageId: string, emoji: string) => {
+    setThreads((current) =>
+      updateThread(
+        current,
+        threadId,
+        (thread) => ({
+          ...thread,
+          messages: thread.messages.map((message) =>
+            message.id !== messageId
+              ? message
+              : {
+                  ...message,
+                  reactions: message.reactions.includes(emoji)
+                    ? message.reactions.filter((reaction) => reaction !== emoji)
+                    : [...message.reactions, emoji],
+                },
+          ),
+        }),
+        true,
+      ),
+    );
+    setActiveReactionTarget(null);
+  };
+
+  const handleCloseAddContactModal = () => {
+    if (isSubmittingContact) {
+      return;
+    }
+
+    setIsAddContactOpen(false);
+    setContactLeadErrors({});
+    setContactSubmitError(null);
+  };
+
+  const handleAddContactSubmit = async () => {
+    const errors = validateContactLead(contactLeadValues);
+    setContactLeadErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    setIsSubmittingContact(true);
+    setContactSubmitError(null);
+
+    const nextThread = buildContactThread(contactLeadValues);
+    const didSend = await submitContactLead(contactLeadValues);
+
+    if (!didSend) {
+      setContactSubmitError("Couldn’t send that yet. Try again in a minute.");
+      setIsSubmittingContact(false);
+      return;
+    }
+
+    setThreads((current) => [nextThread, ...current]);
+    setReplyCountsByThreadId((current) => ({ ...current, [nextThread.id]: 0 }));
+    setSelectedThreadId(nextThread.id);
+    setIsAddContactOpen(false);
+    setContactLeadValues(initialContactLeadValues);
+    setContactLeadErrors({});
+    setIsSubmittingContact(false);
+  };
+
+  const handleSendMessage = () => {
+    if (!selectedThread) {
+      return;
+    }
+
+    const draft = selectedThread.draft.trim();
+
+    if (!draft) {
+      return;
+    }
+
+    const messageId = createMessageId(selectedThread.id);
+    const sentAt = formatNowLabel();
+    const hadPendingReply = selectedThread.pendingReply;
+    const replyCount = replyCountsRef.current[selectedThread.id] ?? 0;
+    const smartReply: ReturnType<typeof getInboxSmartReply> = hadPendingReply
+      ? {
+          shouldReply: false,
+          statusText: selectedThread.behavior.markSeen?.label ?? "Seen",
+          detectedIntents: ["default"],
+          delayMs: selectedThread.behavior.markSeen
+            ? getRandomDelay(
+                selectedThread.behavior.markSeen.minDelayMs,
+                selectedThread.behavior.markSeen.maxDelayMs,
+              )
+            : 900,
+          typing: false,
+        }
+      : getInboxSmartReply(selectedThread, draft, { replyCount });
+    const shouldHoldPendingReply =
+      smartReply.shouldReply || Boolean(smartReply.statusText);
+
+    setThreads((current) =>
+      updateThread(
+        current,
+        selectedThread.id,
+        (thread) => ({
+          ...thread,
+          draft: "",
+          railTime: "Now",
+          unreadCount: 0,
+          pendingReply: shouldHoldPendingReply ? true : thread.pendingReply,
+          messages: [
+            ...thread.messages,
+            {
+              id: messageId,
+              sender: "kyle",
+              body: draft,
+              sentAt,
+              reactions: [],
+              deliveryState: "Sent",
+              shareState: buildMessageShareLabel("sharing"),
+            },
+          ],
+        }),
+        true,
+      ),
+    );
+
+    setActiveReactionTarget(null);
+
+    void submitChatCapture(selectedThread, messageId, draft);
+
+    if (smartReply.shouldReply && smartReply.replyText) {
+      const typingLeadMs = smartReply.typing
+        ? Math.min(700, Math.max(220, Math.round(smartReply.delayMs * 0.18)))
+        : 0;
+
+      if (smartReply.typing) {
+        scheduleTimeout(() => {
+          setThreads((current) =>
+            updateThread(current, selectedThread.id, (thread) => ({
+              ...thread,
+              isTyping: true,
+            })),
+          );
+        }, typingLeadMs);
+      }
+
+      scheduleTimeout(() => {
+        const isActiveThread = selectedThreadIdRef.current === selectedThread.id;
+
+        setThreads((current) =>
+          updateThread(
+            current,
+            selectedThread.id,
+            (thread) => ({
+              ...thread,
+              isTyping: false,
+              pendingReply: false,
+              railTime: "Now",
+              unreadCount: isActiveThread ? 0 : thread.unreadCount + 1,
+              messages: [
+                ...thread.messages,
+                {
+                  id: createMessageId(`${selectedThread.id}-reply`),
+                  sender: "contact",
+                  body: smartReply.replyText ?? "",
+                  sentAt: formatNowLabel(),
+                  reactions: [],
+                },
+              ],
+            }),
+            true,
+          ),
+        );
+        setReplyCountsByThreadId((current) => ({
+          ...current,
+          [selectedThread.id]: (current[selectedThread.id] ?? 0) + 1,
+        }));
+      }, smartReply.delayMs);
+      return;
+    }
+
+    if (smartReply.statusText) {
+      const applyNoReplyStatus = () => {
+        const shouldPreservePendingState = hadPendingReply;
+        setThreads((current) =>
+          updateThread(current, selectedThread.id, (thread) => ({
+            ...thread,
+            isTyping: shouldPreservePendingState ? thread.isTyping : false,
+            pendingReply: shouldPreservePendingState ? thread.pendingReply : false,
+            messages: thread.messages.map((message) =>
+              message.id === messageId
+                ? { ...message, deliveryState: smartReply.statusText ?? message.deliveryState }
+                : message,
+            ),
+          })),
+        );
+      };
+
+      if (smartReply.delayMs > 0) {
+        scheduleTimeout(applyNoReplyStatus, smartReply.delayMs);
+      } else {
+        applyNoReplyStatus();
+      }
+      return;
+    }
+
+    setThreads((current) =>
+      updateThread(current, selectedThread.id, (thread) => ({
+        ...thread,
+        pendingReply: hadPendingReply ? thread.pendingReply : false,
+      })),
+    );
+  };
+
+  const handleComposerKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    handleSendMessage();
+  };
+
+  if (!selectedThread) {
+    return null;
+  }
+
+  const selectedThreadState = getThreadState(selectedThread);
+  const canSend = selectedThread.draft.trim().length > 0;
+
+  return (
+    <section className="min-h-0">
+      <motion.section
+        {...sectionMotion}
+        className="app-panel overflow-hidden rounded-[2.35rem] lg:h-[calc(100svh-12rem)] lg:max-h-[calc(100svh-12rem)]"
+      >
+        <div className="grid min-h-[calc(100svh-13rem)] grid-rows-[minmax(250px,34svh)_minmax(0,1fr)] lg:h-full lg:min-h-0 xl:grid-cols-[330px_minmax(0,1fr)] xl:grid-rows-none">
+          <aside className="flex min-h-0 flex-col border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(10,14,22,0.95))] lg:h-full xl:border-b-0 xl:border-r">
+            <div className="border-b border-white/8 px-4 py-4 sm:px-5">
+              <div className="flex items-start gap-4">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <MessageSquareText className="h-4 w-4 text-[color:var(--accent)]" />
+                    <p className="eyebrow">Communication</p>
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-white">
+                    Inbox
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--text-muted)]">
+                    Click add contact if you really want to get in touch! Other than that? Click around and have some fun! P.S. Try to not get me fired.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <motion.button
+                  type="button"
+                  onClick={() => setIsAddContactOpen(true)}
+                  className={cn(
+                    "relative inline-flex items-center gap-2 overflow-hidden rounded-full border px-4 py-2.5 text-sm font-medium transition duration-[var(--motion-base)]",
+                    isAddContactOpen
+                      ? "border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]"
+                      : "border-[color:var(--accent-border)] bg-[linear-gradient(180deg,rgba(147,184,255,0.18),rgba(147,184,255,0.08))] text-white hover:brightness-110",
+                  )}
+                  animate={
+                    reducedMotion
+                      ? undefined
+                      : {
+                          boxShadow: isAddContactOpen
+                            ? [
+                                "0 0 0 rgba(147,184,255,0.18)",
+                                "0 0 0 rgba(147,184,255,0.18)",
+                              ]
+                            : [
+                                "0 0 0 rgba(147,184,255,0.18)",
+                                "0 0 24px rgba(147,184,255,0.2)",
+                                "0 0 0 rgba(147,184,255,0.18)",
+                              ],
+                        }
+                  }
+                  transition={
+                    reducedMotion
+                      ? undefined
+                      : {
+                          duration: 2.6,
+                          repeat: Number.POSITIVE_INFINITY,
+                          ease: "easeInOut",
+                        }
+                  }
+                  whileHover={reducedMotion ? undefined : { scale: 1.02, y: -1 }}
+                  whileTap={reducedMotion ? undefined : { scale: 0.985 }}
+                  style={{
+                    boxShadow: isAddContactOpen
+                      ? "0 0 0 1px rgba(147,184,255,0.22) inset, 0 0 26px rgba(147,184,255,0.18)"
+                      : "0 0 0 1px rgba(147,184,255,0.16) inset, 0 0 18px rgba(147,184,255,0.12)",
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(147,184,255,0.22),transparent_58%)] opacity-90"
+                  />
+                  <motion.span
+                    className="relative z-[1]"
+                    animate={reducedMotion ? undefined : { rotate: isAddContactOpen ? 0 : [0, -8, 8, 0] }}
+                    transition={
+                      reducedMotion
+                        ? undefined
+                        : {
+                            duration: 2.8,
+                            repeat: Number.POSITIVE_INFINITY,
+                            ease: "easeInOut",
+                            times: [0, 0.2, 0.4, 1],
+                          }
+                    }
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </motion.span>
+                  <span className="relative z-[1]">Add contact</span>
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="max-h-[420px] min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 xl:max-h-none">
+              {threads.length > 0 ? (
+                <div className="space-y-2">
+                  {threads.map((thread) => (
+                    <ThreadRailButton
+                      key={thread.id}
+                      thread={thread}
+                      isActive={thread.id === selectedThread.id}
+                      onSelect={() => handleSelectThread(thread.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4 text-sm leading-6 text-[color:var(--text-muted)]">
+                  No threads yet. Add a contact to start a new conversation.
+                </div>
+              )}
+            </div>
+          </aside>
+
+          <div ref={conversationShellRef} className="flex min-h-0 flex-col lg:h-full">
+            <div className="border-b border-white/8 px-4 py-4 sm:px-6 sm:py-5">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <div
+                  aria-hidden="true"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] border text-sm font-semibold text-white"
+                  style={{
+                    borderColor: selectedThread.borderAccent,
+                    background: `linear-gradient(180deg, ${selectedThread.softAccent}, rgba(8, 12, 19, 0.96))`,
+                  }}
+                >
+                  {selectedThread.initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-2xl font-semibold tracking-[-0.04em] text-white">
+                      {selectedThread.name}
+                    </h3>
+                    <span
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.18em]",
+                        getToneClasses(selectedThreadState.tone),
+                      )}
+                    >
+                      {selectedThreadState.label}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-white/78">{selectedThread.role}</p>
+                </div>
+              </div>
+            </div>
+
+            <div
+              ref={conversationViewportRef}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={selectedThread.id}
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+                  transition={{ duration: reducedMotion ? 0.12 : 0.2, ease: "easeOut" }}
+                  className="space-y-4"
+                >
+                  {selectedThread.messages.map((message) => (
+                    <ConversationMessage
+                      key={message.id}
+                      thread={selectedThread}
+                      message={message}
+                      isReactionOpen={
+                        activeReactionTarget?.threadId === selectedThread.id &&
+                        activeReactionTarget.messageId === message.id
+                      }
+                      onToggleReactionPicker={handleToggleReactionPicker}
+                      onReact={handleReactToMessage}
+                    />
+                  ))}
+
+                  {selectedThread.isTyping ? (
+                    <TypingIndicator
+                      name={selectedThread.name}
+                      accent={selectedThread.accent}
+                      borderAccent={selectedThread.borderAccent}
+                      softAccent={selectedThread.softAccent}
+                    />
+                  ) : null}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/8 bg-[linear-gradient(180deg,rgba(13,18,27,0.98),rgba(8,11,18,1))] px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
+              <div className="rounded-[1.8rem] border border-white/8 bg-black/18 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-4">
+                <textarea
+                  value={selectedThread.draft}
+                  onChange={(event) => handleDraftChange(event.target.value)}
+                  onKeyDown={handleComposerKeyDown}
+                  rows={4}
+                  placeholder="Type message here..."
+                  className="min-h-[112px] w-full resize-none rounded-[1.3rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,11,18,0.9))] px-4 py-3 text-sm leading-6 text-white placeholder:text-[color:var(--text-muted)] outline-none transition duration-[var(--motion-base)] hover:border-white/14 focus:border-[color:var(--accent-border)] focus:ring-2 focus:ring-[color:var(--focus-ring)]"
+                />
+
+                <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="space-y-1.5">
+                    <p className="text-xs leading-5 text-white/42">
+                      Sent messages may be shared with Kyle.
+                    </p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-white/36">
+                      Enter sends. Shift+Enter adds a new line.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleSendMessage}
+                      disabled={!canSend}
+                      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      <SendHorizonal className="h-4 w-4" />
+                      Send message
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.section>
+
+      <AnimatePresence initial={false}>
+        {isAddContactOpen ? (
+          <motion.div
+            initial={reducedMotion ? { opacity: 0 } : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(3,7,13,0.72)] p-4 backdrop-blur-md sm:items-center sm:p-6"
+            onClick={handleCloseAddContactModal}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-contact-title"
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.99 }}
+              transition={{ duration: reducedMotion ? 0.12 : 0.2, ease: "easeOut" }}
+              className="flex max-h-[min(760px,calc(100svh-2rem))] w-full max-w-[38rem] flex-col overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(180deg,rgba(20,28,43,0.96),rgba(7,11,18,0.98))] shadow-[0_30px_90px_rgba(0,0,0,0.42)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="border-b border-white/8 px-5 py-5 sm:px-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="eyebrow">Add Contact</p>
+                    <h3
+                      id="add-contact-title"
+                      className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white"
+                    >
+                      Put a real person into the rail.
+                    </h3>
+                    <p className="mt-2 max-w-[32rem] text-sm leading-6 text-[color:var(--text-muted)]">
+                      Add yourself to the Inbox, leave the useful version of the brief, and Kyle gets the real details only when you submit.
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-white/42">
+                      Rail display uses first name plus last initial.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseAddContactModal}
+                    className="rounded-full border border-white/10 bg-white/[0.04] p-2 text-[color:var(--text-muted)] transition duration-[var(--motion-base)] hover:border-white/14 hover:text-white"
+                    aria-label="Close add contact modal"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="grid gap-3">
+                  <ContactLeadField
+                    label="Name"
+                    value={contactLeadValues.name}
+                    error={contactLeadErrors.name}
+                    placeholder="Who should Kyle know this thread belongs to?"
+                    autoFocus
+                    onChange={(value) => handleContactFieldChange("name", value)}
+                  />
+                  <ContactLeadField
+                    label="Email"
+                    value={contactLeadValues.email}
+                    error={contactLeadErrors.email}
+                    placeholder="The inbox Kyle should reply to."
+                    inputType="email"
+                    onChange={(value) => handleContactFieldChange("email", value)}
+                  />
+                  <ContactLeadField
+                    label="Company / Project"
+                    value={contactLeadValues.companyOrProject}
+                    error={contactLeadErrors.companyOrProject}
+                    placeholder="Optional, but useful."
+                    onChange={(value) => handleContactFieldChange("companyOrProject", value)}
+                  />
+                  <ContactLeadField
+                    label="What are you working on?"
+                    value={contactLeadValues.whatWorkingOn}
+                    error={contactLeadErrors.whatWorkingOn}
+                    placeholder="Give the honest version, not the investor headline."
+                    multiline
+                    onChange={(value) => handleContactFieldChange("whatWorkingOn", value)}
+                  />
+                  <ContactLeadField
+                    label="Help needed"
+                    value={contactLeadValues.helpNeeded}
+                    error={contactLeadErrors.helpNeeded}
+                    placeholder="Where would Kyle be useful?"
+                    multiline
+                    onChange={(value) => handleContactFieldChange("helpNeeded", value)}
+                  />
+                  <ContactLeadField
+                    label="Best way to reach"
+                    value={contactLeadValues.bestWayToReach}
+                    error={contactLeadErrors.bestWayToReach}
+                    placeholder="Optional: email, LinkedIn, or the place you actually check."
+                    onChange={(value) => handleContactFieldChange("bestWayToReach", value)}
+                  />
+                  <div className="hidden" aria-hidden="true">
+                    <label>
+                      Website
+                      <input
+                        type="text"
+                        name="website"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={contactLeadValues.website}
+                        onChange={(event) =>
+                          handleContactFieldChange("website", event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-white/8 px-5 py-4 sm:px-6">
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs leading-5 text-white/42">
+                    Submitting this sends the real version to Kyle.
+                  </p>
+                  {contactSubmitError ? (
+                    <p className="rounded-[1rem] border border-red-300/16 bg-red-500/8 px-3 py-2 text-xs leading-5 text-red-100/86">
+                      {contactSubmitError}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleAddContactSubmit}
+                      disabled={isSubmittingContact}
+                      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[color:var(--accent-strong)] transition duration-[var(--motion-base)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      {isSubmittingContact ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      {isSubmittingContact ? "Sending..." : "Add contact"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseAddContactModal}
+                      disabled={isSubmittingContact}
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-[color:var(--text-muted)] transition duration-[var(--motion-base)] hover:border-white/14 hover:bg-white/[0.06] hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </section>
+  );
+}
+
+function ThreadRailButton({
+  thread,
+  isActive,
+  onSelect,
+}: {
+  thread: InboxThread;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const state = getThreadState(thread);
+  const preview = getThreadPreview(thread);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="interactive-panel relative w-full overflow-hidden rounded-[1rem] border p-3.5 text-left transition duration-[var(--motion-base)] sm:p-4"
+      style={{
+        borderColor: isActive ? thread.borderAccent : "rgba(255,255,255,0.08)",
+        background: isActive
+          ? `linear-gradient(180deg, ${thread.softAccent}, rgba(8, 12, 19, 0.94))`
+          : "rgba(8,12,19,0.92)",
+      }}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-3 left-0 w-[3px] rounded-r-full"
+        style={{
+          backgroundColor: thread.accent,
+          opacity: isActive ? 0.95 : 0,
+        }}
+      />
+      <div className="flex items-start gap-3">
+        <div
+          aria-hidden="true"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-sm font-semibold text-white"
+          style={{
+            borderColor: thread.borderAccent,
+            background: `linear-gradient(180deg, ${thread.softAccent}, rgba(8,12,19,0.92))`,
+          }}
+        >
+          {thread.initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{thread.name}</p>
+              <p className="truncate text-xs uppercase tracking-[0.16em] text-white/42">
+                {thread.role}
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-medium text-[color:var(--text-muted)]">
+              {thread.railTime}
+            </span>
+          </div>
+
+          <p
+            className={cn(
+              "mt-3 text-sm leading-6",
+              thread.unreadCount > 0 ? "text-white/92" : "text-[color:var(--text-muted)]",
+            )}
+            style={previewClampStyle}
+          >
+            {preview}
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.18em]",
+                getToneClasses(state.tone),
+              )}
+            >
+              {state.label}
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+              {thread.statusLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ConversationMessage({
+  thread,
+  message,
+  isReactionOpen,
+  onToggleReactionPicker,
+  onReact,
+}: {
+  thread: InboxThread;
+  message: InboxMessage;
+  isReactionOpen: boolean;
+  onToggleReactionPicker: (threadId: string, messageId: string) => void;
+  onReact: (threadId: string, messageId: string, emoji: string) => void;
+}) {
+  const isKyle = message.sender === "kyle";
+  const reducedMotion = useReducedMotion();
+  const messageMeta = [message.shareState, message.deliveryState].filter(Boolean).join(" · ");
+
+  return (
+    <motion.article
+      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reducedMotion ? 0.12 : 0.18, ease: "easeOut" }}
+      className={cn("flex", isKyle ? "justify-end" : "justify-start")}
+    >
+      <div className={cn("group max-w-[min(42rem,100%)]", isKyle ? "items-end" : "items-start")}>
+        <div
+          className={cn(
+            "rounded-[1rem] border px-4 py-3 sm:px-5",
+            isKyle
+              ? "border-[color:var(--cool-accent-border)] bg-[rgba(156,174,212,0.12)]"
+              : "border-white/10 bg-white/[0.035]",
+          )}
+        >
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2 text-[0.68rem] uppercase tracking-[0.18em]",
+              isKyle ? "justify-end text-white/52" : "text-white/42",
+            )}
+          >
+            <span>{isKyle ? "Kyle" : thread.name}</span>
+            <span className="text-white/20">/</span>
+            <span>{message.sentAt}</span>
+          </div>
+          <div className="mt-3 space-y-3 text-sm leading-7 text-white/88">
+            {renderMessageBody(message.body)}
+          </div>
+        </div>
+
+        <div
+          data-reaction-anchor="true"
+          className={cn(
+            "relative mt-2 flex items-center gap-2",
+            isKyle ? "justify-end" : "justify-start",
+          )}
+        >
+          {message.reactions.map((reaction) => (
+            <motion.button
+              key={reaction}
+              type="button"
+              onClick={() => onReact(thread.id, message.id, reaction)}
+              initial={{ opacity: 0, scale: 0.9, y: 4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-sm text-white/86"
+            >
+              {reaction}
+            </motion.button>
+          ))}
+
+          <button
+            type="button"
+            data-reaction-anchor="true"
+            onClick={() => onToggleReactionPicker(thread.id, message.id)}
+            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/18 px-2.5 py-1.5 text-[0.72rem] uppercase tracking-[0.16em] text-[color:var(--text-muted)] opacity-100 transition duration-[var(--motion-base)] hover:border-white/14 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          >
+            <SmilePlus className="h-3.5 w-3.5" />
+            React
+          </button>
+
+          <AnimatePresence>
+            {isReactionOpen ? (
+              <motion.div
+                data-reaction-anchor="true"
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                className={cn(
+                  "absolute bottom-full z-20 mb-2 flex items-center gap-1 rounded-full border border-white/10 bg-[rgba(8,12,19,0.98)] p-1.5",
+                  isKyle ? "right-0" : "left-0",
+                )}
+              >
+                {inboxReactionOptions.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    data-reaction-anchor="true"
+                    onClick={() => onReact(thread.id, message.id, emoji)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-transparent text-lg transition duration-[var(--motion-base)] hover:border-white/10 hover:bg-white/[0.06]"
+                    aria-label={`React with ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+
+        {isKyle && messageMeta ? (
+          <p className="mt-1 text-right text-xs uppercase tracking-[0.16em] text-white/34">
+            {messageMeta}
+          </p>
+        ) : null}
+      </div>
+    </motion.article>
+  );
+}
+
+function ContactLeadField({
+  label,
+  value,
+  error,
+  placeholder,
+  inputType = "text",
+  multiline = false,
+  autoFocus = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  error?: string;
+  placeholder: string;
+  inputType?: "email" | "text";
+  multiline?: boolean;
+  autoFocus?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm font-medium text-white">{label}</span>
+      {multiline ? (
+        <textarea
+          rows={3}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          autoFocus={autoFocus}
+          placeholder={placeholder}
+          className={cn(
+            "min-h-[96px] rounded-[1.1rem] border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,11,18,0.9))] px-4 py-3 text-sm leading-6 text-white placeholder:text-[color:var(--text-muted)] outline-none transition duration-[var(--motion-base)] hover:border-white/14 focus:border-[color:var(--accent-border)] focus:ring-2 focus:ring-[color:var(--focus-ring)]",
+            error ? "border-red-400/60" : "border-white/8",
+          )}
+        />
+      ) : (
+        <input
+          type={inputType}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          autoFocus={autoFocus}
+          placeholder={placeholder}
+          className={cn(
+            "rounded-[1.1rem] border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,11,18,0.9))] px-4 py-3 text-sm text-white placeholder:text-[color:var(--text-muted)] outline-none transition duration-[var(--motion-base)] hover:border-white/14 focus:border-[color:var(--accent-border)] focus:ring-2 focus:ring-[color:var(--focus-ring)]",
+            error ? "border-red-400/60" : "border-white/8",
+          )}
+        />
+      )}
+      {error ? <p className="text-xs leading-5 text-red-200">{error}</p> : null}
+    </label>
+  );
+}
+
+function TypingIndicator({
+  name,
+  accent,
+  borderAccent,
+  softAccent,
+}: {
+  name: string;
+  accent: string;
+  borderAccent: string;
+  softAccent: string;
+}) {
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
+      className="flex justify-start"
+    >
+      <div
+        className="max-w-[min(28rem,100%)] rounded-[1rem] border px-4 py-3 sm:px-5"
+        style={{
+          borderColor: borderAccent,
+          background: `linear-gradient(180deg, ${softAccent}, rgba(9, 13, 21, 0.96))`,
+        }}
+      >
+        <div className="flex flex-wrap items-center gap-2 text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
+          <span>{name}</span>
+          <span className="text-white/20">/</span>
+          <span>typing...</span>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          {[0, 1, 2].map((dot) => (
+            <motion.span
+              key={dot}
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: accent }}
+              animate={
+                reducedMotion
+                  ? { opacity: 0.8, y: 0, scale: 1 }
+                  : {
+                      opacity: [0.3, 1, 0.45],
+                      y: [0, -2, 0],
+                      scale: [0.92, 1.08, 1],
+                    }
+              }
+              transition={
+                reducedMotion
+                  ? { duration: 0.12, ease: "easeOut" }
+                  : {
+                      duration: 0.9,
+                      delay: dot * 0.12,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "easeInOut",
+                    }
+              }
+            />
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
