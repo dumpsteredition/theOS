@@ -673,11 +673,6 @@ export function DashboardHomeRedesign() {
             <h2 className="text-3xl font-semibold tracking-[-0.06em] text-white sm:text-[2.35rem]">
               Product work for complex systems.
             </h2>
-            <p className="max-w-xl text-sm leading-7 text-[color:var(--text-muted)]">
-              I work where product strategy, UX systems, healthcare AI, and workflow
-              design overlap: the places where the problem is messy, the stakes are
-              real, and the software has to make work easier instead of louder.
-            </p>
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(28,35,52,0.42),rgba(8,12,19,0.94))] p-5 shadow-[0_28px_72px_rgba(0,0,0,0.24)] sm:p-6">
@@ -1276,7 +1271,8 @@ function SnapshotStat({
   const [hovered, setHovered] = useState(false);
   const [focusVisible, setFocusVisible] = useState(false);
   const [pressed, setPressed] = useState(false);
-  const isActive = hovered || focusVisible || pressed;
+  const [selected, setSelected] = useState(false);
+  const isActive = hovered || focusVisible || pressed || selected;
   const revealTransition = isActive
     ? reducedMotion
       ? { duration: 0.22, ease: sectionMotion.transition.ease }
@@ -1291,9 +1287,11 @@ function SnapshotStat({
       };
 
   return (
-    <motion.div
-      tabIndex={0}
-      className="group relative isolate rounded-[1.15rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(8,12,19,0.96)]"
+    <motion.button
+      type="button"
+      aria-pressed={selected}
+      className="group relative isolate w-full appearance-none rounded-[1.15rem] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(8,12,19,0.96)]"
+      onClick={() => setSelected((current) => !current)}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       onFocus={(event) => {
@@ -1432,7 +1430,7 @@ function SnapshotStat({
           <p className="mt-1 text-xs uppercase tracking-[0.16em] text-white/42">{label}</p>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.button>
   );
 }
 
