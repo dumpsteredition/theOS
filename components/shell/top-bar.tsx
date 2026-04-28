@@ -9,7 +9,7 @@ type TopBarProps = {
 
 export function TopBar({ breadcrumb, onOpenCommandPalette }: TopBarProps) {
   return (
-    <header className="border-b border-[color:var(--border-subtle)] bg-[rgba(7,10,15,0.82)] px-5 py-2.5 pt-4 backdrop-blur-xl sm:px-6 sm:pt-5 lg:px-8 lg:py-2 lg:pt-3.5">
+    <header className="hidden border-b border-[color:var(--border-subtle)] bg-[rgba(7,10,15,0.82)] px-5 py-2.5 pt-4 backdrop-blur-xl sm:px-6 sm:pt-5 lg:block lg:px-8 lg:py-2 lg:pt-3.5">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm font-medium tracking-[0.04em] text-white/74">
