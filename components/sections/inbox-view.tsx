@@ -643,6 +643,19 @@ export function InboxView() {
       });
 
       if (response.ok) {
+        const result = (await response.json().catch(() => null)) as {
+          delivered?: boolean;
+          configured?: boolean;
+        } | null;
+
+        if (result?.delivered === false && result.configured === false) {
+          pushToast({
+            title: "Contact route ready",
+            body: "Delivery is not configured yet, but the request was handled cleanly.",
+          });
+          return true;
+        }
+
         pushToast({
           title: "Contact request sent",
           body: "Kyle has the real version now.",

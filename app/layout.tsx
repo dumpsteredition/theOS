@@ -6,9 +6,31 @@ import { AmbientOrbs } from "@/components/interactions/ambient-orbs";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { CommandPaletteProvider } from "@/components/ui/command-palette";
 import { ToastProvider } from "@/components/ui/toast";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
+import { SITE_NAME, SITE_TAGLINE, SITE_TITLE } from "@/lib/constants";
 
 import "./globals.css";
+
+function toAbsoluteUrl(value: string) {
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function getMetadataBaseUrl() {
+  const configuredUrl = process.env.BRUMBLEYOS_SITE_URL?.trim();
+
+  if (configuredUrl) {
+    return toAbsoluteUrl(configuredUrl);
+  }
+
+  const vercelUrl =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
+    process.env.VERCEL_URL?.trim();
+
+  if (vercelUrl) {
+    return toAbsoluteUrl(vercelUrl);
+  }
+
+  return "https://brumbleyos.com";
+}
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -33,21 +55,26 @@ const shadowsIntoLight = Shadows_Into_Light({
 
 export const metadata: Metadata = {
   title: {
-    default: SITE_NAME,
+    default: SITE_TITLE,
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_TAGLINE,
   applicationName: SITE_NAME,
-  metadataBase: new URL("https://brumbleyos.local"),
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
+  metadataBase: new URL(getMetadataBaseUrl()),
   openGraph: {
-    title: SITE_NAME,
+    title: SITE_TITLE,
     description: SITE_TAGLINE,
     siteName: SITE_NAME,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_NAME,
+    title: SITE_TITLE,
     description: SITE_TAGLINE,
   },
 };
