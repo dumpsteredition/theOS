@@ -624,16 +624,25 @@ export function ProfileEditorView() {
                       <h2 className="text-[clamp(2.1rem,12vw,3.2rem)] font-semibold leading-[0.98] tracking-[-0.035em] text-white sm:text-[3.4rem] lg:text-[clamp(2.2rem,5vw,4.2rem)] lg:leading-[0.95] lg:tracking-[-0.05em]">
                         {profileContent.name}
                       </h2>
-                      <p className="max-w-4xl text-lg leading-7 text-white/88 sm:text-xl sm:leading-8 lg:text-[1.4rem]">
-                        {profileContent.positioning}
-                      </p>
+                      {profileContent.positioning ? (
+                        <p className="max-w-4xl text-lg leading-7 text-white/88 sm:text-xl sm:leading-8 lg:text-[1.4rem]">
+                          {profileContent.positioning}
+                        </p>
+                      ) : null}
                     </div>
 
-                    <div className="space-y-3 text-[0.98rem] leading-7 text-[color:var(--text-muted)] sm:text-base">
-                      {profileContent.heroSupport.map((line) => (
-                        <p key={line} className={line === profileContent.heroSupport[1] ? "hidden lg:block" : undefined}>{line}</p>
-                      ))}
-                    </div>
+                    {profileContent.heroSupport.length > 0 ? (
+                      <div className="space-y-3 text-[0.98rem] leading-7 text-[color:var(--text-muted)] sm:text-base">
+                        {profileContent.heroSupport.map((line) => (
+                          <p
+                            key={line}
+                            className={line === profileContent.heroSupport[1] ? "hidden lg:block" : undefined}
+                          >
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 

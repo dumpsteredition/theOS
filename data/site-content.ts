@@ -581,11 +581,8 @@ export const profileContent: ProfileContent = {
     { label: "Product Lead" },
     { label: "Local-only edits" },
   ],
-  positioning: "I work on complex product problems where clarity, trust, and execution actually matter.",
-  heroSupport: [
-    "I help turn messy products and fragile workflows into clearer decisions, sharper experiences, and software people can actually use.",
-    "My sweet spot is the middle of product strategy, UX structure, healthcare AI, and execution - where the problem is usually more complicated than the roadmap wants to admit.",
-  ],
+  positioning: "",
+  heroSupport: [],
   specialtyChips: [
     "Product strategy",
     "UX systems",
