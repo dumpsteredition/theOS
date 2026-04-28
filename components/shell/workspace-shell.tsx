@@ -3,7 +3,6 @@
 import type { CSSProperties } from "react";
 
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -14,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { PageTransition } from "@/components/interactions/page-transition";
 import { AppFooter } from "@/components/shell/app-footer";
+import { MobileBottomNav } from "@/components/shell/mobile-bottom-nav";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { TopBar } from "@/components/shell/top-bar";
 import { useCommandPalette } from "@/components/ui/command-palette";
@@ -28,7 +28,6 @@ const collapsedSidebarWidth = "104px";
 
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const pathname = usePathname();
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const hasHydratedSidebarPreference = useRef(false);
   const { open } = useCommandPalette();
@@ -144,31 +143,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
             : "app-shell min-h-screen rounded-none border-0 shadow-none lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]",
         )}
       >
-        <button
-          type="button"
-          aria-label={isMobileNavOpen ? "Close navigation" : "Open navigation"}
-          aria-expanded={isMobileNavOpen}
-          className={cn(
-            "absolute left-4 top-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 text-white shadow-[var(--shadow-panel)] lg:hidden",
-            isHomeRoute ? "bg-[rgba(7,10,15,0.94)]" : "bg-[rgba(8,10,15,0.86)]",
-          )}
-          onClick={() => setIsMobileNavOpen((value) => !value)}
-        >
-          {isMobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-
-        <div
-          className={cn(
-            "fixed inset-0 z-30 bg-black/55 backdrop-blur-sm transition-opacity duration-[var(--motion-base)] lg:hidden",
-            isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-          onClick={() => setIsMobileNavOpen(false)}
-          aria-hidden="true"
-        />
-
         <SidebarNav
-          isMobileNavOpen={isMobileNavOpen}
-          onCloseMobile={() => setIsMobileNavOpen(false)}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed((value) => !value)}
           operatorRole={operatorRole}
@@ -192,16 +167,21 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
             id="main-content"
             className={cn(
               "relative min-w-0 flex-1",
-              isHomeRoute ? "p-4 sm:p-6 lg:px-8 lg:py-8 xl:px-10" : "p-5 sm:p-6 lg:p-8",
+              isHomeRoute
+                ? "p-4 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 xl:px-10"
+                : "p-5 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:p-8",
             )}
           >
             <PageTransition>{children}</PageTransition>
           </main>
 
-          <AppFooter />
+          <div className="pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-0">
+            <AppFooter />
+          </div>
         </div>
 
       </div>
+      <MobileBottomNav />
     </div>
   );
 }

@@ -13,8 +13,6 @@ import { cn } from "@/lib/utils";
 import { FeedbackTrigger } from "@/components/feedback/feedback-trigger";
 
 type SidebarNavProps = {
-  isMobileNavOpen: boolean;
-  onCloseMobile: () => void;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
   operatorRole: string;
@@ -24,8 +22,6 @@ type SidebarNavProps = {
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 
 export function SidebarNav({
-  isMobileNavOpen,
-  onCloseMobile,
   isSidebarCollapsed,
   onToggleSidebar,
   operatorRole,
@@ -34,10 +30,9 @@ export function SidebarNav({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex w-[88vw] max-w-[320px] flex-col overflow-x-hidden border-r border-[color:var(--border-subtle)] px-5 py-6 shadow-[var(--shadow-shell)] transition-transform duration-[var(--motion-base)] lg:static lg:w-[var(--sidebar-width)] lg:max-w-none lg:translate-x-0 lg:overflow-visible lg:shadow-none",
-        "bg-[rgba(7,10,16,0.97)] lg:bg-[linear-gradient(180deg,rgba(12,16,25,0.98),rgba(7,10,16,0.94))] lg:px-5 lg:py-6",
+        "hidden flex-col overflow-x-hidden border-r border-[color:var(--border-subtle)] transition-transform duration-[var(--motion-base)] lg:static lg:flex lg:w-[var(--sidebar-width)] lg:max-w-none lg:translate-x-0 lg:overflow-visible lg:px-5 lg:py-6 lg:shadow-none",
+        "lg:bg-[linear-gradient(180deg,rgba(12,16,25,0.98),rgba(7,10,16,0.94))]",
         isSidebarCollapsed ? "lg:px-3" : "",
-        isMobileNavOpen ? "translate-x-0" : "-translate-x-full",
       )}
       style={{ transition: "width var(--motion-base) ease" }}
     >
@@ -170,7 +165,6 @@ export function SidebarNav({
               aria-current={active ? "page" : undefined}
               aria-label={isSidebarCollapsed ? item.label : undefined}
               title={isSidebarCollapsed ? item.label : undefined}
-              onClick={onCloseMobile}
               onPointerMove={(event) => {
                 const button = event.currentTarget;
                 const { left, top, width, height } = button.getBoundingClientRect();
