@@ -635,9 +635,7 @@ export function DashboardHomeRedesign() {
                   Active read
                 </p>
                 <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">
-                  Hover a line or use the legend to inspect the curve in more detail. The
-                  work sharpens together because strategy, UX, workflow, and business
-                  judgment keep feeding each other.
+                  Hover or click on an item in the legend to learn more.
                 </p>
                 <div className="mt-4 rounded-[1.25rem] border border-white/8 bg-white/[0.03] p-4">
                   <div className="flex items-center gap-2.5">
@@ -779,11 +777,6 @@ function GrowthChart({
             The skill stack behind the work.
           </h2>
         </div>
-        <p className="max-w-2xl text-sm leading-6 text-[color:var(--text-muted)] xl:pt-1">
-          A visual read on the disciplines Kyle has kept sharpening: strategy, UX
-          systems, healthcare AI, workflow design, and the commercial judgment that
-          makes the work matter.
-        </p>
       </div>
 
       <div className="relative flex-1 overflow-x-auto">
