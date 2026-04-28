@@ -40,6 +40,8 @@ import { RecoveryTerminalOverlay } from "@/components/ui/recovery-terminal-overl
 import { StatusPill } from "@/components/ui/status-pill";
 import { useToast } from "@/components/ui/toast";
 
+type BioRewriteMode = (typeof profileContent.playful.bioRewriteModes)[number];
+
 const sectionMotion = {
   initial: { opacity: 0, y: 14 },
   animate: { opacity: 1, y: 0 },
@@ -177,6 +179,13 @@ function restoreChipOrder(chips: string[]) {
   return profileContent.specialtyChips.filter((chip) => chips.includes(chip));
 }
 
+function getAboutParagraphs(value: string) {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
 function setPersistedLanguageFilterState(nextState: PersistedLanguageFilterState) {
   window.localStorage.setItem(
     LANGUAGE_FILTER_STORAGE_KEY,
@@ -244,6 +253,8 @@ export function ProfileEditorView() {
   const mobileJargonHintId = useId();
   const smallTalkHintId = useId();
   const mobileSmallTalkHintId = useId();
+  const rewritePanelId = useId();
+  const mobileRewritePanelId = useId();
   const aboutFieldRef = useRef<HTMLTextAreaElement>(null);
   const timeoutIdsRef = useRef<number[]>([]);
   const fluffResetPendingRef = useRef(false);
@@ -266,15 +277,23 @@ export function ProfileEditorView() {
   const [recoveryTriggered, setRecoveryTriggered] = useState(false);
   const [jargonSuppressionEnabled, setJargonSuppressionEnabled] = useState(true);
   const [smallTalkMode, setSmallTalkMode] = useState<SmallTalkMode>("low");
-  const [rewriteIndex, setRewriteIndex] = useState(-1);
+  const [isRewritePanelOpen, setIsRewritePanelOpen] = useState(false);
+  const [selectedRewriteId, setSelectedRewriteId] = useState<string | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [shouldShowPreferenceStatus, setShouldShowPreferenceStatus] = useState(false);
   const [liveMessage, setLiveMessage] = useState("");
 
   const hasAboutDraft = aboutDraft !== initialAboutValue;
   const isDirty = hasAboutDraft;
-  const rewriteMode =
-    rewriteIndex >= 0 ? profileContent.playful.bioRewriteModes[rewriteIndex] : null;
+  const aboutParagraphs = getAboutParagraphs(aboutDraft);
+  const selectedRewriteMode =
+    profileContent.playful.bioRewriteModes.find((mode) => mode.id === selectedRewriteId) ??
+    null;
+  const aboutBadgeLabel = selectedRewriteMode
+    ? "Local rewrite"
+    : isDirty
+      ? "Changed locally"
+      : "Live bio";
   const smallTalkSelection =
     smallTalkOptions.find((option) => option.id === smallTalkMode) ?? smallTalkOptions[0];
   const languageFilterMeta =
@@ -415,6 +434,8 @@ export function ProfileEditorView() {
     setSpecialtyDraft(profileContent.specialtyChips);
     setRestoringChip(null);
     setFluffTolerance(0);
+    setSelectedRewriteId(null);
+    setIsRewritePanelOpen(false);
     setIsReviewOpen(false);
     setLiveMessage("Local draft reset.");
   }
@@ -486,11 +507,37 @@ export function ProfileEditorView() {
     }, reducedMotion ? 0 : 220);
   }
 
-  function handleCycleRewrite() {
-    const nextIndex =
-      rewriteIndex + 1 >= profileContent.playful.bioRewriteModes.length ? 0 : rewriteIndex + 1;
-    setRewriteIndex(nextIndex);
-    setLiveMessage(profileContent.playful.bioRewriteModes[nextIndex]?.verdict ?? "");
+  function handleRewriteToggle() {
+    setIsRewritePanelOpen((current) => {
+      const nextIsOpen = !current;
+      setLiveMessage(
+        nextIsOpen
+          ? "Signal Rewrite Engine opened. Local preview only."
+          : "Signal Rewrite Engine collapsed.",
+      );
+      return nextIsOpen;
+    });
+  }
+
+  function handleRewriteSelect(rewriteId: string) {
+    const rewriteMode = profileContent.playful.bioRewriteModes.find(
+      (mode) => mode.id === rewriteId,
+    );
+
+    if (!rewriteMode) {
+      return;
+    }
+
+    setSelectedRewriteId(rewriteMode.id);
+    setAboutDraft(rewriteMode.body.join("\n\n"));
+    setIsRewritePanelOpen(true);
+    setLiveMessage(`${rewriteMode.label} rewrite selected. ${rewriteMode.status}`);
+  }
+
+  function handleRestoreOriginalAbout() {
+    setAboutDraft(initialAboutValue);
+    setSelectedRewriteId(null);
+    setLiveMessage("Original About Kyle copy restored.");
   }
 
   function handleLanguageFilterInteract() {
@@ -700,6 +747,13 @@ export function ProfileEditorView() {
                   languageFilterHintId={mobileLanguageFilterHintId}
                   jargonHintId={mobileJargonHintId}
                   smallTalkHintId={mobileSmallTalkHintId}
+                  rewritePanelId={mobileRewritePanelId}
+                  aboutParagraphs={aboutParagraphs}
+                  aboutBadgeLabel={aboutBadgeLabel}
+                  isRewritePanelOpen={isRewritePanelOpen}
+                  selectedRewriteId={selectedRewriteId}
+                  selectedRewriteMode={selectedRewriteMode}
+                  reducedMotion={Boolean(reducedMotion)}
                   fluffTolerance={fluffTolerance}
                   languageFilterMeta={languageFilterMeta}
                   languageFilterMode={languageFilterMode}
@@ -711,6 +765,9 @@ export function ProfileEditorView() {
                   smallTalkMode={smallTalkMode}
                   smallTalkSelection={smallTalkSelection}
                   communicationFooterMessage={communicationFooterMessage}
+                  onRewriteToggle={handleRewriteToggle}
+                  onRewriteSelect={handleRewriteSelect}
+                  onRestoreOriginalAbout={handleRestoreOriginalAbout}
                   onFluffToleranceChange={handleFluffToleranceChange}
                   onLanguageFilterInteract={handleLanguageFilterInteract}
                   onLanguageFilterTapeRemove={handleLanguageFilterTapeRemove}
@@ -838,42 +895,47 @@ export function ProfileEditorView() {
                     id={aboutFieldId}
                     value={aboutDraft}
                     readOnly={!isEditMode}
-                    onChange={(event) => setAboutDraft(event.target.value)}
+                    onChange={(event) => {
+                      setAboutDraft(event.target.value);
+                      setSelectedRewriteId(null);
+                    }}
                     rows={9}
+                    aria-live="polite"
                     className={cn(
                       "min-h-[15rem] w-full rounded-[1.4rem] border px-4 py-4 text-sm leading-7 focus:outline-none sm:text-base",
                       isEditMode
                         ? "border-white/14 bg-[rgba(255,255,255,0.05)] text-white"
-                        : "border-white/8 bg-black/14 text-white/86",
+                        : selectedRewriteMode
+                          ? "border-[rgba(111,244,255,0.22)] bg-[rgba(111,244,255,0.045)] text-white/90 shadow-[inset_0_0_0_1px_rgba(111,244,255,0.04)]"
+                          : "border-white/8 bg-black/14 text-white/86",
                     )}
                   />
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <StatusPill tone={isDirty ? "accent" : "neutral"}>
-                      {isDirty ? "Changed locally" : "Live bio"}
+                      {aboutBadgeLabel}
                     </StatusPill>
-                    <EditorButton tone="ghost" onClick={handleCycleRewrite}>
+                    <EditorButton
+                      tone="ghost"
+                      onClick={handleRewriteToggle}
+                      aria-expanded={isRewritePanelOpen}
+                      aria-controls={rewritePanelId}
+                    >
                       <Sparkles className="h-4 w-4" />
                       Try a rewrite
                     </EditorButton>
                   </div>
 
                   <AnimatePresence initial={false}>
-                    {rewriteMode ? (
-                      <motion.div
-                        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                        transition={{ duration: reducedMotion ? 0.12 : 0.2, ease: sectionMotion.transition.ease }}
-                        className="mt-4 rounded-[1.35rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(10,14,20,0.9))] p-4"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <StatusPill tone="accent">{rewriteMode.label}</StatusPill>
-                          <span className="text-xs uppercase tracking-[0.16em] text-white/42">Rewrite toy</span>
-                        </div>
-                        <p className="mt-4 text-base leading-7 text-white/88">{rewriteMode.output}</p>
-                        <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">{rewriteMode.verdict}</p>
-                      </motion.div>
+                    {isRewritePanelOpen ? (
+                      <AboutRewritePanel
+                        id={rewritePanelId}
+                        selectedRewriteId={selectedRewriteId}
+                        selectedRewriteMode={selectedRewriteMode}
+                        reducedMotion={Boolean(reducedMotion)}
+                        onSelect={handleRewriteSelect}
+                        onRestoreOriginal={handleRestoreOriginalAbout}
+                      />
                     ) : null}
                   </AnimatePresence>
                 </ProfileFieldSurface>
@@ -970,6 +1032,13 @@ function MobileProfileContent({
   languageFilterHintId,
   jargonHintId,
   smallTalkHintId,
+  rewritePanelId,
+  aboutParagraphs,
+  aboutBadgeLabel,
+  isRewritePanelOpen,
+  selectedRewriteId,
+  selectedRewriteMode,
+  reducedMotion,
   fluffTolerance,
   languageFilterMeta,
   languageFilterMode,
@@ -981,13 +1050,16 @@ function MobileProfileContent({
   smallTalkMode,
   smallTalkSelection,
   communicationFooterMessage,
+  onRewriteToggle,
+  onRewriteSelect,
+  onRestoreOriginalAbout,
   onFluffToleranceChange,
   onLanguageFilterInteract,
   onLanguageFilterTapeRemove,
   onLanguageFilterSecretReset,
   onJargonSuppressionChange,
   onSmallTalkModeChange,
-}: CommunicationPreferencesPanelProps) {
+}: MobileProfileContentProps) {
   return (
     <div className="space-y-5 lg:hidden">
       <section className="rounded-[1.45rem] border border-white/8 bg-black/10 p-4">
@@ -1008,12 +1080,49 @@ function MobileProfileContent({
       </section>
 
       <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,12,19,0.78))] p-4">
-        <p className="eyebrow">{profileContent.aboutField.title}</p>
-        <div className="mt-4 space-y-4 text-[0.98rem] leading-7 text-white/84">
-          {profileContent.aboutField.body.map((paragraph) => (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="eyebrow">{profileContent.aboutField.title}</p>
+          <StatusPill tone={selectedRewriteMode ? "accent" : "neutral"}>
+            {aboutBadgeLabel}
+          </StatusPill>
+        </div>
+        <div
+          aria-live="polite"
+          className={cn(
+            "mt-4 space-y-4 rounded-[1.2rem] border px-3.5 py-3 text-[0.98rem] leading-7 transition",
+            selectedRewriteMode
+              ? "border-[rgba(111,244,255,0.18)] bg-[rgba(111,244,255,0.045)] text-white/88"
+              : "border-white/8 bg-black/10 text-white/84",
+          )}
+        >
+          {aboutParagraphs.map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}
         </div>
+        <div className="mt-4">
+          <EditorButton
+            tone="ghost"
+            onClick={onRewriteToggle}
+            aria-expanded={isRewritePanelOpen}
+            aria-controls={rewritePanelId}
+            className="w-full justify-center"
+          >
+            <Sparkles className="h-4 w-4" />
+            Try a rewrite
+          </EditorButton>
+        </div>
+        <AnimatePresence initial={false}>
+          {isRewritePanelOpen ? (
+            <AboutRewritePanel
+              id={rewritePanelId}
+              selectedRewriteId={selectedRewriteId}
+              selectedRewriteMode={selectedRewriteMode}
+              reducedMotion={reducedMotion}
+              onSelect={onRewriteSelect}
+              onRestoreOriginal={onRestoreOriginalAbout}
+            />
+          ) : null}
+        </AnimatePresence>
       </section>
 
       <section className="rounded-[1.55rem] border border-white/8 bg-black/10 p-4">
@@ -1065,6 +1174,136 @@ function MobileProfileContent({
     </div>
   );
 }
+
+function AboutRewritePanel({
+  id,
+  selectedRewriteId,
+  selectedRewriteMode,
+  reducedMotion,
+  onSelect,
+  onRestoreOriginal,
+}: {
+  id: string;
+  selectedRewriteId: string | null;
+  selectedRewriteMode: BioRewriteMode | null;
+  reducedMotion: boolean;
+  onSelect: (rewriteId: string) => void;
+  onRestoreOriginal: () => void;
+}) {
+  return (
+    <motion.div
+      id={id}
+      role="region"
+      aria-label="Signal Rewrite Engine"
+      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0, y: 8 }}
+      animate={reducedMotion ? { opacity: 1 } : { opacity: 1, height: "auto", y: 0 }}
+      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0, y: -6 }}
+      transition={{ duration: reducedMotion ? 0.12 : 0.22, ease: sectionMotion.transition.ease }}
+      className="mt-4 overflow-hidden rounded-[1.35rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(10,14,20,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+    >
+      <div className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[0.75rem] border border-[rgba(111,244,255,0.18)] bg-[rgba(111,244,255,0.07)] text-[rgba(191,251,255,0.9)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+              >
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <h4 className="text-base font-semibold tracking-[-0.02em] text-white">
+                Signal Rewrite Engine
+              </h4>
+              <span className="text-xs uppercase tracking-[0.16em] text-white/42">
+                Local preview
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--text-muted)]">
+              Choose a voice and preview a local rewrite. No API call. No dignity warranty.
+            </p>
+            <p className="mt-1 text-xs leading-5 text-white/42">
+              Local preview only. Refresh restores the original.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onRestoreOriginal}
+            className="inline-flex min-h-10 items-center justify-center rounded-[0.9rem] border border-white/10 bg-black/16 px-3 py-2 text-sm font-medium text-white/72 transition hover:border-white/18 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(111,244,255,0.24)]"
+          >
+            Restore original
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          {profileContent.playful.bioRewriteModes.map((mode) => {
+            const isSelected = mode.id === selectedRewriteId;
+
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => onSelect(mode.id)}
+                className={cn(
+                  "min-h-[6.6rem] rounded-[1.05rem] border p-3 text-left transition duration-[var(--motion-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(111,244,255,0.24)]",
+                  isSelected
+                    ? "border-[rgba(111,244,255,0.36)] bg-[rgba(111,244,255,0.09)] shadow-[0_14px_36px_rgba(19,56,67,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "border-white/8 bg-black/14 hover:-translate-y-0.5 hover:border-white/16 hover:bg-white/[0.045]",
+                )}
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="text-sm font-semibold text-white">{mode.label}</span>
+                  {isSelected ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(111,244,255,0.24)] bg-[rgba(111,244,255,0.08)] px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[rgba(191,251,255,0.9)]">
+                      <BadgeCheck className="h-3 w-3" />
+                      Selected
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-2 block text-sm leading-5 text-[color:var(--text-muted)]">
+                  {mode.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          aria-live="polite"
+          className="mt-4 rounded-[1rem] border border-white/8 bg-black/16 px-3.5 py-3"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill tone={selectedRewriteMode ? "accent" : "neutral"}>
+              {selectedRewriteMode ? selectedRewriteMode.label : "Original copy"}
+            </StatusPill>
+            <span className="text-xs uppercase tracking-[0.16em] text-white/42">
+              Preview state
+            </span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-white/78">
+            {selectedRewriteMode
+              ? selectedRewriteMode.status
+              : "Original About Kyle copy is active."}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+type MobileProfileContentProps = CommunicationPreferencesPanelProps & {
+  rewritePanelId: string;
+  aboutParagraphs: string[];
+  aboutBadgeLabel: string;
+  isRewritePanelOpen: boolean;
+  selectedRewriteId: string | null;
+  selectedRewriteMode: BioRewriteMode | null;
+  reducedMotion: boolean;
+  onRewriteToggle: () => void;
+  onRewriteSelect: (rewriteId: string) => void;
+  onRestoreOriginalAbout: () => void;
+};
 
 type CommunicationPreferencesPanelProps = {
   className?: string;

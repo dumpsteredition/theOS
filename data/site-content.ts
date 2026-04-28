@@ -117,9 +117,11 @@ export type ProfileVersionEntry = {
 };
 
 export type ProfileRewriteMode = {
+  id: string;
   label: string;
-  output: string;
-  verdict: string;
+  description: string;
+  body: string[];
+  status: string;
 };
 
 export type ProfilePlayfulContent = {
@@ -706,22 +708,70 @@ export const profileContent: ProfileContent = {
     },
     bioRewriteModes: [
       {
-        label: "Corporate mode",
-        output:
-          "Strategic cross-functional product leader leveraging scalable innovation across complex ecosystems.",
-        verdict: "Rejected. Too much LinkedIn fog.",
+        id: "brumbleyos",
+        label: "BrumbleyOS",
+        description: "Sharp, useful, and close to the actual voice.",
+        body: [
+          "I work best on complex product problems where the constraints are real, the workflows are messy, and the easy answer is probably lying.",
+          "My work sits between product strategy, UX systems, healthcare AI, and workflow design. I care about turning complicated products into clearer decisions, sharper experiences, and software people can actually use.",
+          "I’m usually most useful when a team needs less motion, better judgment, and a path through the mess that does not pretend the mess is simple.",
+        ],
+        status: "Approved direction.",
       },
       {
-        label: "Brutally honest mode",
-        output:
-          "Turns messy software problems into less messy software problems while complaining about unnecessary complexity.",
-        verdict: "Closer than expected.",
+        id: "blunt",
+        label: "Blunt",
+        description: "The version with the padding removed.",
+        body: [
+          "I fix messy product problems.",
+          "Usually that means figuring out what is actually broken, cutting the stuff that is pretending to help, and making the workflow easier for real people instead of imaginary perfect users.",
+          "I’m good in the part where strategy, UX, healthcare AI, and execution are all tangled together and everyone is trying very hard not to admit the current thing is confusing.",
+        ],
+        status: "Honestly, not wrong.",
       },
       {
-        label: "BrumbleyOS mode",
-        output:
-          "Product strategy, UX systems, healthcare AI, and workflow clarity for complex products that need to actually work.",
-        verdict: "Approved direction.",
+        id: "common-sense",
+        label: "Common Sense",
+        description: "Plain language. No theater.",
+        body: [
+          "I help teams make complex software easier to understand and easier to use.",
+          "Most of my work sits around product strategy, UX systems, healthcare AI, and workflows that have gotten too complicated. I focus on the real problem, the decisions people need to make, and the parts of the product that either help or get in the way.",
+          "The goal is simple: make the work clearer, calmer, and more useful.",
+        ],
+        status: "Suspiciously reasonable.",
+      },
+      {
+        id: "corporate",
+        label: "Corporate",
+        description: "For legal reasons, this is terrible.",
+        body: [
+          "Strategic cross-functional product leader leveraging scalable innovation across complex healthcare technology ecosystems.",
+          "Experienced in aligning stakeholder priorities, optimizing user-centered workflows, and driving operational clarity through synergistic product transformation.",
+          "Passionate about delivering high-impact solutions that enable measurable outcomes across dynamic enterprise environments.",
+        ],
+        status: "Rejected. Too much LinkedIn fog.",
+      },
+      {
+        id: "recruiter-friendly",
+        label: "Recruiter-Friendly",
+        description: "Clear enough for humans. Polished enough for a hiring screen.",
+        body: [
+          "I’m a Product Lead focused on product strategy, UX systems, healthcare AI, and workflow-heavy software.",
+          "I specialize in complex products where users need clarity, trust, and better decision support. My work often involves turning ambiguous problems into clearer product direction, sharper UX, and systems that are easier for teams and users to act on.",
+          "I’m strongest in messy, high-stakes environments where product judgment matters as much as execution.",
+        ],
+        status: "Acceptable public-facing version.",
+      },
+      {
+        id: "overly-honest",
+        label: "Overly Honest",
+        description: "Probably accurate. Maybe too accurate.",
+        body: [
+          "I spend a lot of time looking at software that technically works but makes people think way too hard.",
+          "My job is usually to find the part everyone is working around, name the real problem, and help shape a product that does not require heroics, tribal knowledge, or a 45-minute explanation to use.",
+          "I care about strategy, UX, healthcare AI, and workflows because that is where good intentions usually become confusing screens.",
+        ],
+        status: "This one knows too much.",
       },
     ],
     saveReview: {
