@@ -55,6 +55,7 @@ type LanguageFilterMode = "active" | "broken" | "repaired" | "tapeRemoved";
 type PersistedLanguageFilterState = {
   state: "active" | "broken" | "repaired";
   hasExperiencedRecovery?: boolean;
+  hasClosedIncident?: boolean;
 };
 
 const languageFilterDamageCopy = [
@@ -94,6 +95,11 @@ const languageFilterRepairedCopy = {
   helper: "Repaired by IT. Further adjustment discouraged.",
 };
 
+const languageFilterClosedCopy = {
+  status: "Closed",
+  helper: "Incident closed by IT. Knob retained by policy hardware.",
+};
+
 const languageFilterTapeRemovedCopy = {
   status: "Unsecured",
   helper: "IT said don't touch that again. I would stop. Seriously.",
@@ -101,6 +107,9 @@ const languageFilterTapeRemovedCopy = {
 
 const languageFilterRepairWarning =
   "IT has already intervened. Further adjustment is not recommended.";
+
+const languageFilterClosureWarning =
+  "Language filter incident is closed. The knob is no longer a user-serviceable part.";
 
 const languageFilterRecoveryLiveMessage =
   "Recovery console engaged. IT is handling the consequences.";
@@ -184,18 +193,24 @@ function getPersistedLanguageFilterState(): PersistedLanguageFilterState {
     }
 
     const parsed = JSON.parse(storedValue) as
-      | { state?: LanguageFilterMode; hasExperiencedRecovery?: boolean }
+      | {
+          state?: LanguageFilterMode;
+          hasExperiencedRecovery?: boolean;
+          hasClosedIncident?: boolean;
+        }
       | null;
     const hasExperiencedRecovery = Boolean(parsed?.hasExperiencedRecovery);
+    const hasClosedIncident = Boolean(parsed?.hasClosedIncident);
 
     if (!parsed?.state) {
-      return { state: "active", hasExperiencedRecovery };
+      return { state: "active", hasExperiencedRecovery, hasClosedIncident };
     }
 
     if (parsed.state === "broken") {
       const repairedState = {
         state: "repaired",
         hasExperiencedRecovery,
+        hasClosedIncident,
       } satisfies PersistedLanguageFilterState;
       setPersistedLanguageFilterState(repairedState);
       return repairedState;
@@ -207,6 +222,7 @@ function getPersistedLanguageFilterState(): PersistedLanguageFilterState {
           ? "repaired"
           : "active",
       hasExperiencedRecovery,
+      hasClosedIncident,
     };
   } catch {
     window.localStorage.removeItem(LANGUAGE_FILTER_STORAGE_KEY);
@@ -245,6 +261,8 @@ export function ProfileEditorView() {
   const [languageFilterRepairNudges, setLanguageFilterRepairNudges] = useState(0);
   const [hasExperiencedLanguageFilterRecovery, setHasExperiencedLanguageFilterRecovery] =
     useState(false);
+  const [hasClosedLanguageFilterIncident, setHasClosedLanguageFilterIncident] =
+    useState(false);
   const [recoveryTriggered, setRecoveryTriggered] = useState(false);
   const [jargonSuppressionEnabled, setJargonSuppressionEnabled] = useState(true);
   const [smallTalkMode, setSmallTalkMode] = useState<SmallTalkMode>("low");
@@ -265,13 +283,21 @@ export function ProfileEditorView() {
       : languageFilterMode === "tapeRemoved"
         ? languageFilterTapeRemovedCopy
       : languageFilterMode === "repaired"
-        ? {
-            ...languageFilterRepairedCopy,
-            helper:
-              languageFilterRepairNudges > 0
-                ? languageFilterRepairWarning
-                : languageFilterRepairedCopy.helper,
-          }
+        ? hasClosedLanguageFilterIncident
+          ? {
+              ...languageFilterClosedCopy,
+              helper:
+                languageFilterRepairNudges > 0
+                  ? languageFilterClosureWarning
+                  : languageFilterClosedCopy.helper,
+            }
+          : {
+              ...languageFilterRepairedCopy,
+              helper:
+                languageFilterRepairNudges > 0
+                  ? languageFilterRepairWarning
+                  : languageFilterRepairedCopy.helper,
+            }
         : languageFilterDamageCopy[
             Math.min(languageFilterDamage, languageFilterDamageCopy.length - 1)
           ];
@@ -280,9 +306,11 @@ export function ProfileEditorView() {
     : languageFilterMode === "tapeRemoved"
       ? "Repair integrity compromised. Local support has stopped saying please."
     : languageFilterMode === "repaired"
-      ? languageFilterRepairNudges > 0
-        ? "Touch request denied by local support."
-        : "Repair integrity prioritized over user freedom."
+      ? hasClosedLanguageFilterIncident
+        ? "Language filter incident officially closed."
+        : languageFilterRepairNudges > 0
+          ? "Touch request denied by local support."
+          : "Repair integrity prioritized over user freedom."
       : !jargonSuppressionEnabled
       ? "Corporate language leak no longer fully contained."
       : smallTalkMode === "expanded"
@@ -327,7 +355,8 @@ export function ProfileEditorView() {
 
     if (
       persistedState.state === "active" &&
-      !persistedState.hasExperiencedRecovery
+      !persistedState.hasExperiencedRecovery &&
+      !persistedState.hasClosedIncident
     ) {
       return;
     }
@@ -339,6 +368,9 @@ export function ProfileEditorView() {
       setHasExperiencedLanguageFilterRecovery(
         Boolean(persistedState.hasExperiencedRecovery),
       );
+      setHasClosedLanguageFilterIncident(
+        Boolean(persistedState.hasClosedIncident),
+      );
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -347,10 +379,12 @@ export function ProfileEditorView() {
   function persistLanguageFilterState(
     state: PersistedLanguageFilterState["state"],
     hasExperiencedRecovery = hasExperiencedLanguageFilterRecovery,
+    hasClosedIncident = hasClosedLanguageFilterIncident,
   ) {
     setPersistedLanguageFilterState({
       state,
       hasExperiencedRecovery,
+      hasClosedIncident,
     });
   }
 
@@ -472,7 +506,11 @@ export function ProfileEditorView() {
 
     if (languageFilterMode === "repaired") {
       setLanguageFilterRepairNudges((current) => current + 1);
-      setLiveMessage(languageFilterRepairWarning);
+      setLiveMessage(
+        hasClosedLanguageFilterIncident
+          ? languageFilterClosureWarning
+          : languageFilterRepairWarning,
+      );
       return;
     }
 
@@ -495,7 +533,10 @@ export function ProfileEditorView() {
   }
 
   function handleLanguageFilterTapeRemove() {
-    if (languageFilterMode !== "repaired") {
+    if (languageFilterMode !== "repaired" || hasClosedLanguageFilterIncident) {
+      if (hasClosedLanguageFilterIncident) {
+        setLiveMessage(languageFilterClosureWarning);
+      }
       return;
     }
 
@@ -505,11 +546,18 @@ export function ProfileEditorView() {
   }
 
   function handleLanguageFilterRecoveryComplete() {
+    const shouldCloseIncident = hasExperiencedLanguageFilterRecovery;
+
     setHasExperiencedLanguageFilterRecovery(true);
-    persistLanguageFilterState("repaired", true);
+    setHasClosedLanguageFilterIncident(shouldCloseIncident);
+    persistLanguageFilterState("repaired", true, shouldCloseIncident);
     setLanguageFilterMode("repaired");
     setLanguageFilterRepairNudges(0);
-    setLiveMessage("Homepage restore initiated.");
+    setLiveMessage(
+      shouldCloseIncident
+        ? "Language filter incident closed. Homepage restore initiated."
+        : "Homepage restore initiated.",
+    );
     router.replace("/");
   }
 
@@ -518,6 +566,7 @@ export function ProfileEditorView() {
     setLanguageFilterDamage(0);
     setLanguageFilterRepairNudges(0);
     setHasExperiencedLanguageFilterRecovery(false);
+    setHasClosedLanguageFilterIncident(false);
     setRecoveryTriggered(false);
     window.localStorage.removeItem(LANGUAGE_FILTER_STORAGE_KEY);
     setLiveMessage("Language filter restored to factory overconfidence.");
@@ -657,6 +706,7 @@ export function ProfileEditorView() {
                   languageFilterDamage={languageFilterDamage}
                   languageFilterRepairNudges={languageFilterRepairNudges}
                   hasExperiencedLanguageFilterRecovery={hasExperiencedLanguageFilterRecovery}
+                  hasClosedLanguageFilterIncident={hasClosedLanguageFilterIncident}
                   jargonSuppressionEnabled={jargonSuppressionEnabled}
                   smallTalkMode={smallTalkMode}
                   smallTalkSelection={smallTalkSelection}
@@ -883,6 +933,7 @@ export function ProfileEditorView() {
                   languageFilterDamage={languageFilterDamage}
                   languageFilterRepairNudges={languageFilterRepairNudges}
                   hasExperiencedLanguageFilterRecovery={hasExperiencedLanguageFilterRecovery}
+                  hasClosedLanguageFilterIncident={hasClosedLanguageFilterIncident}
                   jargonSuppressionEnabled={jargonSuppressionEnabled}
                   smallTalkMode={smallTalkMode}
                   smallTalkSelection={smallTalkSelection}
@@ -905,7 +956,10 @@ export function ProfileEditorView() {
 
       <ProfileReviewModal isOpen={isReviewOpen} hasAboutDraft={hasAboutDraft} onClose={() => setIsReviewOpen(false)} onReset={handleResetDraft} />
       {recoveryTriggered ? (
-        <RecoveryTerminalOverlay onComplete={handleLanguageFilterRecoveryComplete} />
+        <RecoveryTerminalOverlay
+          variant={hasExperiencedLanguageFilterRecovery ? "repeat" : "first"}
+          onComplete={handleLanguageFilterRecoveryComplete}
+        />
       ) : null}
     </>
   );
@@ -922,6 +976,7 @@ function MobileProfileContent({
   languageFilterDamage,
   languageFilterRepairNudges,
   hasExperiencedLanguageFilterRecovery,
+  hasClosedLanguageFilterIncident,
   jargonSuppressionEnabled,
   smallTalkMode,
   smallTalkSelection,
@@ -994,6 +1049,7 @@ function MobileProfileContent({
         languageFilterDamage={languageFilterDamage}
         languageFilterRepairNudges={languageFilterRepairNudges}
         hasExperiencedLanguageFilterRecovery={hasExperiencedLanguageFilterRecovery}
+        hasClosedLanguageFilterIncident={hasClosedLanguageFilterIncident}
         jargonSuppressionEnabled={jargonSuppressionEnabled}
         smallTalkMode={smallTalkMode}
         smallTalkSelection={smallTalkSelection}
@@ -1025,6 +1081,7 @@ type CommunicationPreferencesPanelProps = {
   languageFilterDamage: number;
   languageFilterRepairNudges: number;
   hasExperiencedLanguageFilterRecovery: boolean;
+  hasClosedLanguageFilterIncident: boolean;
   jargonSuppressionEnabled: boolean;
   smallTalkMode: SmallTalkMode;
   smallTalkSelection: (typeof smallTalkOptions)[number];
@@ -1050,6 +1107,7 @@ function CommunicationPreferencesPanel({
   languageFilterDamage,
   languageFilterRepairNudges,
   hasExperiencedLanguageFilterRecovery,
+  hasClosedLanguageFilterIncident,
   jargonSuppressionEnabled,
   smallTalkMode,
   smallTalkSelection,
@@ -1139,14 +1197,20 @@ function CommunicationPreferencesPanel({
               damage={languageFilterDamage}
               repairNudges={languageFilterRepairNudges}
               noteVariant={
-                hasExperiencedLanguageFilterRecovery
+                hasClosedLanguageFilterIncident
+                  ? "closed"
+                  : hasExperiencedLanguageFilterRecovery
                   ? "escalated"
                   : "default"
               }
               label="Language filter"
               ariaDescribedBy={languageFilterHintId}
               onInteract={onLanguageFilterInteract}
-              onTapeInteract={onLanguageFilterTapeRemove}
+              onTapeInteract={
+                hasClosedLanguageFilterIncident
+                  ? undefined
+                  : onLanguageFilterTapeRemove
+              }
             />
           </div>
         </PreferenceRow>

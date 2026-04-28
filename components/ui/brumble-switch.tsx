@@ -42,34 +42,53 @@ export function BrumbleSwitch({
   const descriptionId = description ? `${inputId}-description` : undefined;
   const describedBy = [ariaDescribedBy, descriptionId].filter(Boolean).join(" ") || undefined;
 
-  const input = (
-    <input
-      id={inputId}
-      type="checkbox"
-      role="switch"
-      checked={checked}
-      disabled={disabled}
-      aria-label={label}
-      aria-describedby={describedBy}
-      onChange={(event) => onCheckedChange(event.target.checked)}
-      className={cn("brumble-switch", variantClassNames[variant], className)}
-      style={style}
-    />
+  const switchControl = (
+    <>
+      <input
+        id={inputId}
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        disabled={disabled}
+        aria-label={label}
+        aria-describedby={describedBy}
+        onChange={(event) => onCheckedChange(event.target.checked)}
+        className="brumble-switch__input"
+      />
+      <span
+        aria-hidden="true"
+        className={cn("brumble-switch", variantClassNames[variant], className)}
+        style={style}
+      />
+    </>
   );
 
   if (!description) {
-    return input;
+    return (
+      <label
+        htmlFor={inputId}
+        className={cn("brumble-switch-control", disabled ? "brumble-switch-control--disabled" : "")}
+      >
+        {switchControl}
+      </label>
+    );
   }
 
   return (
-    <label htmlFor={inputId} className="brumble-switch-input">
+    <label
+      htmlFor={inputId}
+      className={cn(
+        "brumble-switch-control brumble-switch-input",
+        disabled ? "brumble-switch-control--disabled" : "",
+      )}
+    >
       <span className="brumble-switch-input__copy">
         {label ? <span className="brumble-switch-input__label">{label}</span> : null}
         <span id={descriptionId} className="brumble-switch-input__description">
           {description}
         </span>
       </span>
-      {input}
+      {switchControl}
     </label>
   );
 }
@@ -78,7 +97,7 @@ type BrokenBrumbleSwitchProps = {
   mode: "active" | "broken" | "repaired" | "tapeRemoved";
   damage: number;
   repairNudges: number;
-  noteVariant?: "default" | "escalated";
+  noteVariant?: "default" | "escalated" | "closed";
   label: string;
   ariaDescribedBy?: string;
   onInteract: () => void;
@@ -175,7 +194,8 @@ export function BrokenBrumbleSwitch({
   const isBroken = mode === "broken";
   const isTapeRemoved = mode === "tapeRemoved";
   const isRepaired = mode === "repaired" || isTapeRemoved;
-  const isSecuredRepair = mode === "repaired";
+  const isClosed = noteVariant === "closed";
+  const isSecuredRepair = mode === "repaired" && !isClosed;
   const [brokenFlicker, setBrokenFlicker] = useState<BrokenFlickerState>({
     opacity: 0.26,
     scaleX: 1,
@@ -313,6 +333,7 @@ export function BrokenBrumbleSwitch({
           isBroken ? "brumble-switch-language-filter--broken" : "",
           isRepaired ? "brumble-switch-language-filter--repaired" : "",
           isTapeRemoved ? "brumble-switch-language-filter--tape-removed" : "",
+          isClosed ? "brumble-switch-language-filter--closed" : "",
           !isBroken && visualDamage > 0 ? `brumble-switch--damage-${visualDamage}` : "",
         )}
         style={
@@ -419,6 +440,15 @@ export function BrokenBrumbleSwitch({
           />
         </>
       ) : null}
+      {isClosed ? (
+        <span
+          aria-hidden="true"
+          className="brumble-switch-language-filter__closure-clamp"
+        >
+          <span className="brumble-switch-language-filter__closure-screw brumble-switch-language-filter__closure-screw--upper" />
+          <span className="brumble-switch-language-filter__closure-screw brumble-switch-language-filter__closure-screw--lower" />
+        </span>
+      ) : null}
     </div>
   );
 
@@ -431,14 +461,17 @@ export function BrokenBrumbleSwitch({
         )}
       >
         <motion.div
-          key={`repair-note-${repairNudges}`}
+          key={`repair-note-${noteVariant}-${repairNudges}`}
           animate={
             (repairNudges > 0 || isTapeRemoved) && !reducedMotion
               ? { rotate: [-1.9, -3.2, -0.9, -2.1, -1.9], y: [0, -1, 0.8, 0] }
-              : { rotate: isTapeRemoved ? -3 : -1.9, y: 0 }
+              : { rotate: isClosed ? -0.4 : isTapeRemoved ? -3 : -1.9, y: 0 }
           }
           transition={{ duration: reducedMotion ? 0.08 : 0.28, ease: "easeOut" }}
-          className="brumble-switch-language-filter__note"
+          className={cn(
+            "brumble-switch-language-filter__note",
+            isClosed ? "brumble-switch-language-filter__note--closed" : "",
+          )}
         >
           <span
             aria-hidden="true"
@@ -448,7 +481,16 @@ export function BrokenBrumbleSwitch({
             aria-hidden="true"
             className="brumble-switch-language-filter__note-tape brumble-switch-language-filter__note-tape--right"
           />
-          {noteVariant === "escalated" ? (
+          {noteVariant === "closed" ? (
+            <>
+              <p className="brumble-switch-language-filter__note-title brumble-switch-language-filter__note-title--closed">
+                CASE CLOSED
+              </p>
+              <p className="brumble-switch-language-filter__note-title brumble-switch-language-filter__note-title--closed brumble-switch-language-filter__note-title--followup">
+                KNOB IN CUSTODY.
+              </p>
+            </>
+          ) : noteVariant === "escalated" ? (
             <>
               <p className="brumble-switch-language-filter__note-title brumble-switch-language-filter__note-title--escalated">
                 <span className="block">DO NOT TOUCH THE</span>
@@ -463,15 +505,17 @@ export function BrokenBrumbleSwitch({
               Do not touch the knob
             </p>
           )}
-          <p className="brumble-switch-language-filter__note-signoff">- IT Team</p>
+          <p className="brumble-switch-language-filter__note-signoff">
+            {isClosed ? "- IT Compliance" : "- IT Team"}
+          </p>
         </motion.div>
 
         <motion.div
-          key={`repair-switch-${repairNudges}`}
+          key={`repair-switch-${noteVariant}-${repairNudges}`}
           animate={
             (repairNudges > 0 || isTapeRemoved) && !reducedMotion
               ? { rotate: [0, 1.3, -1.7, 0.9, 0], y: [0, -1, 0.6, 0] }
-              : { rotate: isTapeRemoved ? -0.6 : 0, y: 0 }
+              : { rotate: isClosed ? 0.35 : isTapeRemoved ? -0.6 : 0, y: 0 }
           }
           transition={{ duration: reducedMotion ? 0.08 : 0.28, ease: "easeOut" }}
         >

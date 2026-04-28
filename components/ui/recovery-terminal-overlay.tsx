@@ -3,7 +3,22 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
-const mainRecoveryScriptLines = [
+type RecoveryTerminalVariant = "first" | "repeat";
+
+const firstRecoveryMainLines = [
+  "BRUMBLEYOS RECOVERY CONSOLE v0.2",
+  "incident: language_filter_knob_removed",
+  "status: recoverable",
+  "diagnostic: language filter knob detached from repaired state",
+  "IT: We can fix this.",
+  "IT: The tape was there for a reason, but this is still within normal nonsense tolerance.",
+  "scanning communication preferences...",
+  "locating knob mount...",
+  "reapplying tape...",
+  "preparing a polite maintenance note...",
+] as const;
+
+const repeatRecoveryMainLines = [
   "BRUMBLEYOS RECOVERY CONSOLE v0.2",
   "incident: language_filter_knob_removed_again",
   "status: somehow worse",
@@ -18,7 +33,16 @@ const mainRecoveryScriptLines = [
   "writing a stronger note this time...",
 ] as const;
 
-const diagnosticRecoveryLines = [
+const firstDiagnosticRecoveryLines = [
+  "checking /profile/preferences/language-filter",
+  "repairing knob_mount_01",
+  "restoring tape_integrity",
+  "resetting bluntness_overflow",
+  "clearing curiosity_warning_level",
+  "restoring profile route",
+] as const;
+
+const repeatDiagnosticRecoveryLines = [
   "checking /profile/preferences/language-filter",
   "repairing knob_mount_01",
   "restoring tape_integrity",
@@ -27,14 +51,43 @@ const diagnosticRecoveryLines = [
   "restoring app shell",
 ] as const;
 
-const finalRepairScriptLines = [
+const firstFinalRepairScriptLines = [
+  "> running ./restore-language-filter.sh",
+  "> reseating knob...",
+  "> applying fresh tape...",
+  "> marking incident as resolved...",
+  "> routing back to safety...",
+  "> done.",
+] as const;
+
+const repeatFinalRepairScriptLines = [
   "> running ./please-stop-touching-the-knob.sh",
-  "> forcing tape compliance...",
-  "> adding final warning note...",
-  "> marking incident as user-assisted...",
+  "> installing knob retention bracket...",
+  "> sealing switch housing...",
+  "> issuing closure notice...",
+  "> marking incident as officially closed...",
   "> routing to safety...",
   "> done.",
 ] as const;
+
+const recoveryScripts = {
+  first: {
+    main: firstRecoveryMainLines,
+    diagnostics: firstDiagnosticRecoveryLines,
+    final: firstFinalRepairScriptLines,
+    waitingFooter: "IT is waiting for confirmation before finishing the repair.",
+    runningFooter: "Repair script is running. Please let it have this one.",
+    idleFooter: "IT has logged this as a routine knob incident.",
+  },
+  repeat: {
+    main: repeatRecoveryMainLines,
+    diagnostics: repeatDiagnosticRecoveryLines,
+    final: repeatFinalRepairScriptLines,
+    waitingFooter: "IT is waiting for confirmation before touching anything else.",
+    runningFooter: "Repair script is running. Please do not encourage it.",
+    idleFooter: "IT has expressed concerns about repeat knob incidents.",
+  },
+} as const;
 
 type RecoveryPhase =
   | "typingMain"
@@ -44,13 +97,16 @@ type RecoveryPhase =
   | "repairComplete";
 
 type RecoveryTerminalOverlayProps = {
+  variant?: RecoveryTerminalVariant;
   onComplete: () => void;
 };
 
 export function RecoveryTerminalOverlay({
+  variant = "first",
   onComplete,
 }: RecoveryTerminalOverlayProps) {
   const reducedMotion = useReducedMotion();
+  const recoveryScript = recoveryScripts[variant];
   const shellRef = useRef<HTMLDivElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const skipButtonRef = useRef<HTMLButtonElement>(null);
@@ -101,7 +157,7 @@ export function RecoveryTerminalOverlay({
       return;
     }
 
-    if (mainLineIndex >= mainRecoveryScriptLines.length) {
+    if (mainLineIndex >= recoveryScript.main.length) {
       const timeoutId = window.setTimeout(() => {
         setPhase("diagnostics");
       }, reducedMotion ? 80 : 180);
@@ -109,7 +165,7 @@ export function RecoveryTerminalOverlay({
       return () => window.clearTimeout(timeoutId);
     }
 
-    const activeLine = mainRecoveryScriptLines[mainLineIndex];
+    const activeLine = recoveryScript.main[mainLineIndex];
     const isLineComplete = mainCharIndex >= activeLine.length;
     const timeoutId = window.setTimeout(() => {
       if (isLineComplete) {
@@ -122,14 +178,14 @@ export function RecoveryTerminalOverlay({
     }, isLineComplete ? (reducedMotion ? 28 : 110) : reducedMotion ? 9 : 16);
 
     return () => window.clearTimeout(timeoutId);
-  }, [mainCharIndex, mainLineIndex, phase, reducedMotion]);
+  }, [mainCharIndex, mainLineIndex, phase, recoveryScript.main, reducedMotion]);
 
   useEffect(() => {
     if (phase !== "diagnostics") {
       return;
     }
 
-    if (diagnosticIndex >= diagnosticRecoveryLines.length) {
+    if (diagnosticIndex >= recoveryScript.diagnostics.length) {
       const timeoutId = window.setTimeout(() => {
         setPhase("awaitingRepairConfirm");
       }, reducedMotion ? 80 : 180);
@@ -142,7 +198,7 @@ export function RecoveryTerminalOverlay({
     }, reducedMotion ? 90 : 160);
 
     return () => window.clearTimeout(timeoutId);
-  }, [diagnosticIndex, phase, reducedMotion]);
+  }, [diagnosticIndex, phase, recoveryScript.diagnostics.length, reducedMotion]);
 
   useEffect(() => {
     if (!isAwaitingRepairConfirm) {
@@ -161,7 +217,7 @@ export function RecoveryTerminalOverlay({
       return;
     }
 
-    if (finalRepairIndex >= finalRepairScriptLines.length) {
+    if (finalRepairIndex >= recoveryScript.final.length) {
       const timeoutId = window.setTimeout(() => {
         setPhase("repairComplete");
       }, reducedMotion ? 140 : 320);
@@ -174,7 +230,7 @@ export function RecoveryTerminalOverlay({
     }, reducedMotion ? 90 : 220);
 
     return () => window.clearTimeout(timeoutId);
-  }, [finalRepairIndex, phase, reducedMotion]);
+  }, [finalRepairIndex, phase, recoveryScript.final.length, reducedMotion]);
 
   useEffect(() => {
     if (phase !== "repairComplete") {
@@ -274,8 +330,8 @@ export function RecoveryTerminalOverlay({
                   className="space-y-2 text-[0.88rem] leading-6 text-[#84ffad] sm:text-[0.95rem]"
                 >
                   {(phase === "typingMain"
-                    ? mainRecoveryScriptLines.slice(0, mainLineIndex + 1)
-                    : mainRecoveryScriptLines
+                    ? recoveryScript.main.slice(0, mainLineIndex + 1)
+                    : recoveryScript.main
                   ).map((line, index) => {
                     const isActiveLine = phase === "typingMain" && index === mainLineIndex;
                     const visibleLine =
@@ -299,7 +355,7 @@ export function RecoveryTerminalOverlay({
                 </div>
 
                 <div className="space-y-2 border-t border-[#102d1b] pt-4 text-[0.78rem] leading-5 text-[#67d789] sm:text-[0.82rem]">
-                  {diagnosticRecoveryLines.slice(0, diagnosticIndex).map((line) => (
+                  {recoveryScript.diagnostics.slice(0, diagnosticIndex).map((line) => (
                     <p key={line} className="opacity-90">
                       {">"} {line}
                     </p>
@@ -330,7 +386,7 @@ export function RecoveryTerminalOverlay({
 
                 {phase === "repairRunning" || phase === "repairComplete" ? (
                   <div className="space-y-2 border-t border-[#102d1b] pt-4 text-[0.78rem] leading-5 text-[#67d789] sm:text-[0.82rem]">
-                    {finalRepairScriptLines.slice(0, finalRepairIndex).map((line) => (
+                    {recoveryScript.final.slice(0, finalRepairIndex).map((line) => (
                       <p key={line} className="opacity-95">
                         {line}
                       </p>
@@ -356,10 +412,10 @@ export function RecoveryTerminalOverlay({
           <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-[#143320] bg-[#061006]/95 px-3 py-3 text-[0.72rem] leading-5 text-[#56bf78] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <p>
               {isAwaitingRepairConfirm
-                ? "IT is waiting for confirmation before touching anything else."
+                ? recoveryScript.waitingFooter
                 : phase === "repairRunning"
-                  ? "Repair script is running. Please do not encourage it."
-                  : "IT has expressed concerns about repeat knob incidents."}
+                  ? recoveryScript.runningFooter
+                  : recoveryScript.idleFooter}
             </p>
             <button
               ref={skipButtonRef}
