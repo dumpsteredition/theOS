@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono, Manrope, Shadows_Into_Light } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { FeedbackIntegrityProvider } from "@/components/feedback/feedback-integrity";
 import { AmbientOrbs } from "@/components/interactions/ambient-orbs";
@@ -99,6 +100,7 @@ export default function RootLayout({
             </CommandPaletteProvider>
           </FeedbackIntegrityProvider>
         </ToastProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
