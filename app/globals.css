@@ -87,6 +87,22 @@ body::after {
     radial-gradient(circle at 48% 100%, rgba(39, 55, 86, 0.08), transparent 24%);
 }
 
+.dashboard-hero-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1280px) {
+  .dashboard-hero-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1700px) {
+  .dashboard-hero-layout {
+    grid-template-columns: minmax(0, 1.3fr) minmax(340px, 0.7fr);
+  }
+}
+
 a,
 button,
 input,

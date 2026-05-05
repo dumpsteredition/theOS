@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   BadgeCheck,
+  BrainCircuit,
   ChevronDown,
   Compass,
   HeartPulse,
@@ -76,7 +77,7 @@ const heroFocusPills = [
   },
   {
     label: "Artificial Intelligence",
-    icon: HeartPulse,
+    icon: BrainCircuit,
     color: "#9b8cff",
     background: "rgba(155,140,255,0.14)",
     border: "rgba(155,140,255,0.24)",
@@ -507,7 +508,7 @@ export function DashboardHomeRedesign() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(155,176,226,0.24),transparent_30%),radial-gradient(circle_at_92%_12%,rgba(72,92,141,0.24),transparent_24%),radial-gradient(circle_at_56%_100%,rgba(39,56,92,0.18),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.05),transparent_30%)]"
         />
-          <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.7fr)]">
+          <div className="dashboard-hero-layout relative grid gap-8">
             <div className="space-y-8">
               <div className="flex flex-wrap items-center gap-2.5">
                 {heroFocusPills.map((pill) => (
@@ -1113,16 +1114,16 @@ function HeroFocusPill({
       style={{
         borderColor: pill.border,
         background: `linear-gradient(180deg, ${pill.background}, rgba(10,14,22,0.5))`,
-        boxShadow: `0 0 0 1px rgba(255,255,255,0.02) inset, 0 10px 26px ${pill.glow}`,
+        boxShadow: `0 0 0 1px rgba(255,255,255,0.02) inset, 0 6px 14px ${pill.glow}`,
       }}
       animate={
         reducedMotion
           ? undefined
           : {
               boxShadow: [
-                `0 0 0 1px rgba(255,255,255,0.02) inset, 0 10px 22px ${pill.glow}`,
-                `0 0 0 1px rgba(255,255,255,0.03) inset, 0 12px 30px ${softGlow}`,
-                `0 0 0 1px rgba(255,255,255,0.02) inset, 0 10px 22px ${pill.glow}`,
+                `0 0 0 1px rgba(255,255,255,0.02) inset, 0 5px 12px ${pill.glow}`,
+                `0 0 0 1px rgba(255,255,255,0.03) inset, 0 7px 16px ${softGlow}`,
+                `0 0 0 1px rgba(255,255,255,0.02) inset, 0 5px 12px ${pill.glow}`,
               ],
             }
       }
@@ -1189,7 +1190,7 @@ function HeroFocusPill({
             borderColor: `${pill.color}3b`,
             backgroundColor: `${pill.color}1f`,
             color: pill.color,
-            boxShadow: `0 0 16px ${pill.glow}`,
+            boxShadow: `0 0 8px ${pill.glow}`,
           }}
           animate={
             reducedMotion
@@ -1197,9 +1198,9 @@ function HeroFocusPill({
               : {
                   scale: [1, 1.08, 1],
                   boxShadow: [
-                    `0 0 10px ${pill.glow}`,
-                    `0 0 22px ${strongGlow}`,
-                    `0 0 12px ${pill.glow}`,
+                    `0 0 6px ${pill.glow}`,
+                    `0 0 12px ${strongGlow}`,
+                    `0 0 7px ${pill.glow}`,
                   ],
                 }
           }
