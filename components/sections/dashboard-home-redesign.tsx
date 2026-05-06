@@ -36,13 +36,21 @@ const defaultGlowTransition = {
   ease: "easeInOut" as const,
 };
 
+const homepagePerformanceMode = true;
+const animateLinkedInBanner = true;
+const animateHeroLiveStatus = true;
+
+function canAnimateDecorations(reducedMotion: boolean) {
+  return !homepagePerformanceMode && !reducedMotion;
+}
+
 function getDefaultGlowAnimation<T extends Record<string, unknown>>(
   reducedMotion: boolean,
   animate: T,
   duration = defaultGlowTransition.duration,
   delay = 0,
 ) {
-  if (reducedMotion) {
+  if (!canAnimateDecorations(reducedMotion)) {
     return {};
   }
 
@@ -488,6 +496,7 @@ const chartPadding = { top: 24, right: 178, bottom: 44, left: 60 };
 
 export function DashboardHomeRedesign() {
   const reducedMotion = useReducedMotion();
+  const animateLiveStatus = animateHeroLiveStatus && !reducedMotion;
   const [activeGrowthSeries, setActiveGrowthSeries] = useState<string>(growthSeries[0].label);
   const [activeCapabilityId, setActiveCapabilityId] = useState<string | null>(null);
   const [previewCapabilityId, setPreviewCapabilityId] = useState<string | null>(null);
@@ -508,15 +517,16 @@ export function DashboardHomeRedesign() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(155,176,226,0.24),transparent_30%),radial-gradient(circle_at_92%_12%,rgba(72,92,141,0.24),transparent_24%),radial-gradient(circle_at_56%_100%,rgba(39,56,92,0.18),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.05),transparent_30%)]"
         />
-          <div className="dashboard-hero-layout relative grid gap-8">
-            <div className="space-y-8">
-              <div className="flex flex-wrap items-center gap-2.5">
-                {heroFocusPills.map((pill) => (
-                  <HeroFocusPill key={pill.label} pill={pill} />
-                ))}
-              </div>
+        <HeroKineticField />
+        <div className="dashboard-hero-layout relative z-10 grid gap-8">
+          <div className="space-y-8">
+            <div className="relative z-10 flex flex-wrap items-center gap-2.5">
+              {heroFocusPills.map((pill) => (
+                <HeroFocusPill key={pill.label} pill={pill} />
+              ))}
+            </div>
 
-            <div className="max-w-5xl space-y-5">
+            <div className="relative z-10 max-w-5xl space-y-5">
               <p className="text-sm font-medium uppercase tracking-[0.22em] text-white/34">
                 Kyle Brumbley
               </p>
@@ -530,7 +540,7 @@ export function DashboardHomeRedesign() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3.5">
+            <div className="relative z-10 flex flex-wrap gap-3.5">
               {heroActions.map((action) => (
                 <HeroLink
                   key={action.label}
@@ -557,12 +567,12 @@ export function DashboardHomeRedesign() {
                   </p>
                   <div className="flex items-center gap-2 rounded-full border border-[color:var(--accent-border)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[color:var(--accent-strong)] shadow-[0_0_18px_rgba(115,224,169,0.08)]">
                     <span className="relative flex h-2.5 w-2.5 items-center justify-center">
-                      {reducedMotion ? null : (
+                      {animateLiveStatus ? (
                         <span className="absolute inline-flex h-full w-full rounded-full bg-[color:var(--accent)] opacity-45 blur-[1px] animate-ping" />
-                      )}
+                      ) : null}
                       <span
                         className={
-                          reducedMotion
+                          !animateLiveStatus
                             ? "relative h-2.5 w-2.5 rounded-full bg-[color:var(--accent)] shadow-[0_0_10px_rgba(115,224,169,0.45)]"
                             : "relative h-2.5 w-2.5 rounded-full bg-[color:var(--accent)] shadow-[0_0_14px_rgba(115,224,169,0.65)] animate-pulse"
                         }
@@ -728,6 +738,7 @@ function GrowthChart({
   onSeriesChange: (label: string) => void;
 }) {
   const reducedMotion = Boolean(useReducedMotion());
+  const showChartGlow = canAnimateDecorations(reducedMotion);
   const yTicks = [0, 20, 40, 60, 80, 100];
   const xStep =
     (chartWidth - chartPadding.left - chartPadding.right) / (growthYears.length - 1);
@@ -838,8 +849,9 @@ function GrowthChart({
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           className="h-full min-h-[560px] min-w-[920px] w-full"
         >
-          <defs>
-            {seriesWithPoints.map((series) => (
+          {showChartGlow ? (
+            <defs>
+              {seriesWithPoints.map((series) => (
               <filter
                 key={`glow-${series.label}`}
                 id={series.label.replaceAll(/[^a-zA-Z0-9]/g, "")}
@@ -854,8 +866,9 @@ function GrowthChart({
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
-            ))}
-          </defs>
+              ))}
+            </defs>
+          ) : null}
 
           <rect
             x="0"
@@ -939,9 +952,9 @@ function GrowthChart({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   opacity={isActive ? 0.22 : 0.04}
-                  filter={`url(#${filterId})`}
+                  filter={showChartGlow ? `url(#${filterId})` : undefined}
                   style={
-                    isActive
+                    isActive && showChartGlow
                       ? {
                           filter: `url(#${filterId}) drop-shadow(0 0 12px ${series.color}66)`,
                         }
@@ -1072,6 +1085,28 @@ function GrowthChart({
   );
 }
 
+function HeroKineticField() {
+  return (
+    <div aria-hidden="true" className="hero-kinetic-field">
+      <span className="hero-kinetic-field__mesh" />
+      <span className="hero-kinetic-field__edge hero-kinetic-field__edge--one" />
+      <span className="hero-kinetic-field__edge hero-kinetic-field__edge--two" />
+      <span className="hero-kinetic-field__edge hero-kinetic-field__edge--three" />
+      <span className="hero-kinetic-field__edge hero-kinetic-field__edge--four" />
+      <span className="hero-kinetic-field__edge hero-kinetic-field__edge--five" />
+      <span className="hero-kinetic-field__edge hero-kinetic-field__edge--six" />
+      <span className="hero-kinetic-field__edge hero-kinetic-field__edge--seven" />
+      <span className="hero-kinetic-field__node hero-kinetic-field__node--one" />
+      <span className="hero-kinetic-field__node hero-kinetic-field__node--two" />
+      <span className="hero-kinetic-field__node hero-kinetic-field__node--three" />
+      <span className="hero-kinetic-field__node hero-kinetic-field__node--four" />
+      <span className="hero-kinetic-field__node hero-kinetic-field__node--five" />
+      <span className="hero-kinetic-field__node hero-kinetic-field__node--six" />
+      <span className="hero-kinetic-field__node hero-kinetic-field__node--seven" />
+    </div>
+  );
+}
+
 function HeroLink({
   href,
   label,
@@ -1104,6 +1139,7 @@ function HeroFocusPill({
   pill: (typeof heroFocusPills)[number];
 }) {
   const reducedMotion = Boolean(useReducedMotion());
+  const animateDecorations = canAnimateDecorations(reducedMotion);
   const Icon = pill.icon;
   const softGlow = pill.glow.replace(/0\.\d+\)$/, "0.3)");
   const strongGlow = pill.glow.replace(/0\.\d+\)$/, "0.5)");
@@ -1117,24 +1153,24 @@ function HeroFocusPill({
         boxShadow: `0 0 0 1px rgba(255,255,255,0.02) inset, 0 6px 14px ${pill.glow}`,
       }}
       animate={
-        reducedMotion
-          ? undefined
-          : {
+        animateDecorations
+          ? {
               boxShadow: [
                 `0 0 0 1px rgba(255,255,255,0.02) inset, 0 5px 12px ${pill.glow}`,
                 `0 0 0 1px rgba(255,255,255,0.03) inset, 0 7px 16px ${softGlow}`,
                 `0 0 0 1px rgba(255,255,255,0.02) inset, 0 5px 12px ${pill.glow}`,
               ],
             }
+          : undefined
       }
       transition={
-        reducedMotion
-          ? undefined
-          : {
+        animateDecorations
+          ? {
               duration: 2.8,
               repeat: Number.POSITIVE_INFINITY,
               ease: "easeInOut",
             }
+          : undefined
       }
     >
       <motion.span
@@ -1144,21 +1180,21 @@ function HeroFocusPill({
           backgroundImage: `radial-gradient(circle at 22% 34%, ${pill.glow}, transparent 28%)`,
         }}
         animate={
-          reducedMotion
-            ? undefined
-            : {
+          animateDecorations
+            ? {
                 opacity: [0.42, 0.68, 0.46],
                 scale: [0.98, 1.02, 0.99],
               }
+            : undefined
         }
         transition={
-          reducedMotion
-            ? undefined
-            : {
+          animateDecorations
+            ? {
                 duration: 3.8,
                 repeat: Number.POSITIVE_INFINITY,
                 ease: "easeInOut",
               }
+            : undefined
         }
       />
       <motion.span
@@ -1166,21 +1202,21 @@ function HeroFocusPill({
         className="pointer-events-none absolute left-4 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full blur-[14px]"
         style={{ backgroundColor: softGlow }}
         animate={
-          reducedMotion
-            ? undefined
-            : {
+          animateDecorations
+            ? {
                 opacity: [0.2, 0.75, 0.24],
                 scale: [0.9, 1.22, 0.94],
               }
+            : undefined
         }
         transition={
-          reducedMotion
-            ? undefined
-            : {
+          animateDecorations
+            ? {
                 duration: 2.2,
                 repeat: Number.POSITIVE_INFINITY,
                 ease: "easeInOut",
               }
+            : undefined
         }
       />
       <span className="relative flex items-center gap-2.5">
@@ -1193,9 +1229,8 @@ function HeroFocusPill({
             boxShadow: `0 0 8px ${pill.glow}`,
           }}
           animate={
-            reducedMotion
-              ? undefined
-              : {
+            animateDecorations
+              ? {
                   scale: [1, 1.08, 1],
                   boxShadow: [
                     `0 0 6px ${pill.glow}`,
@@ -1203,15 +1238,16 @@ function HeroFocusPill({
                     `0 0 7px ${pill.glow}`,
                   ],
                 }
+              : undefined
           }
           transition={
-            reducedMotion
-              ? undefined
-              : {
+            animateDecorations
+              ? {
                   duration: 3.2,
                   repeat: Number.POSITIVE_INFINITY,
                   ease: "easeInOut",
                 }
+              : undefined
           }
         >
           <Icon className="h-3 w-3" strokeWidth={2.15} />
@@ -1700,6 +1736,8 @@ function CrownAchievementIllustration({ className }: { className?: string }) {
 
 function LinkedInProfilePort() {
   const reducedMotion = Boolean(useReducedMotion());
+  const animateDecorations =
+    animateLinkedInBanner && !reducedMotion;
 
   return (
     <section className="mt-5 overflow-hidden rounded-[1.8rem] border border-[#dce6f1] bg-[#f4f2ee] shadow-[0_18px_44px_rgba(0,0,0,0.16)]">
@@ -1729,50 +1767,77 @@ function LinkedInProfilePort() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.26),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(255,255,255,0.2),transparent_24%),radial-gradient(circle_at_48%_100%,rgba(255,255,255,0.14),transparent_32%)]" />
             <div className="absolute inset-0 opacity-90">
               <svg aria-hidden="true" className="h-full w-full" viewBox="0 0 600 120" preserveAspectRatio="none">
-                <motion.path
-                  d={linkedInBannerWaves.top[0]}
-                  fill="rgba(255,255,255,0.16)"
-                  animate={reducedMotion ? undefined : { d: [...linkedInBannerWaves.top] }}
+                <motion.g
+                  style={{
+                    transformBox: "fill-box",
+                    transformOrigin: "center bottom",
+                    willChange: animateDecorations ? "transform" : undefined,
+                  }}
+                  animate={animateDecorations ? { y: [18, -10, 18] } : undefined}
                   transition={
-                    reducedMotion
-                      ? undefined
-                      : {
-                          duration: 4.8,
+                    animateDecorations
+                      ? {
+                          duration: 4.6,
                           repeat: Number.POSITIVE_INFINITY,
                           ease: "easeInOut",
                         }
+                      : undefined
                   }
-                />
-                <motion.path
-                  d={linkedInBannerWaves.middle[0]}
-                  fill="rgba(120,239,255,0.24)"
-                  animate={reducedMotion ? undefined : { d: [...linkedInBannerWaves.middle] }}
+                >
+                  <path
+                    d={linkedInBannerWaves.top[0]}
+                    fill="rgba(255,255,255,0.16)"
+                    transform="translate(-72 -15) scale(1.24 1.35)"
+                  />
+                </motion.g>
+                <motion.g
+                  style={{
+                    transformBox: "fill-box",
+                    transformOrigin: "center bottom",
+                    willChange: animateDecorations ? "transform" : undefined,
+                  }}
+                  animate={animateDecorations ? { y: [-14, 20, -14] } : undefined}
                   transition={
-                    reducedMotion
-                      ? undefined
-                      : {
-                          duration: 6.4,
+                    animateDecorations
+                      ? {
+                          duration: 8.4,
                           repeat: Number.POSITIVE_INFINITY,
                           ease: "easeInOut",
-                          delay: 0.3,
+                          delay: 0.85,
                         }
+                      : undefined
                   }
-                />
-                <motion.path
-                  d={linkedInBannerWaves.bottom[0]}
-                  fill="rgba(255,132,202,0.2)"
-                  animate={reducedMotion ? undefined : { d: [...linkedInBannerWaves.bottom] }}
+                >
+                  <path
+                    d={linkedInBannerWaves.middle[0]}
+                    fill="rgba(120,239,255,0.24)"
+                    transform="translate(-90 -15) scale(1.3 1.38)"
+                  />
+                </motion.g>
+                <motion.g
+                  style={{
+                    transformBox: "fill-box",
+                    transformOrigin: "center bottom",
+                    willChange: animateDecorations ? "transform" : undefined,
+                  }}
+                  animate={animateDecorations ? { y: [22, -16, 22] } : undefined}
                   transition={
-                    reducedMotion
-                      ? undefined
-                      : {
-                          duration: 5.6,
+                    animateDecorations
+                      ? {
+                          duration: 5.8,
                           repeat: Number.POSITIVE_INFINITY,
                           ease: "easeInOut",
-                          delay: 0.15,
+                          delay: 1.35,
                         }
+                      : undefined
                   }
-                />
+                >
+                  <path
+                    d={linkedInBannerWaves.bottom[0]}
+                    fill="rgba(255,132,202,0.2)"
+                    transform="translate(-78 -30) scale(1.26 1.4)"
+                  />
+                </motion.g>
               </svg>
             </div>
             <div className="absolute inset-0 shadow-[inset_0_-26px_42px_rgba(255,255,255,0.16),inset_0_0_50px_rgba(91,160,255,0.22)]" />
