@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono, Manrope, Shadows_Into_Light } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { SITE_NAME, SITE_TAGLINE, SITE_TITLE } from "@/lib/constants";
 
@@ -85,6 +86,7 @@ export default function RootLayout({
         className={`${manrope.variable} ${dmSans.variable} ${jetBrainsMono.variable} ${shadowsIntoLight.variable} min-h-screen bg-[color:var(--background)] font-sans text-[color:var(--text-primary)] antialiased`}
       >
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
