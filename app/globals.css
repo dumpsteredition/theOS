@@ -1464,6 +1464,230 @@ a:focus-visible {
   }
 }
 
+.recovery-os {
+  --ubuntu-orange: #e95420;
+  --ubuntu-aubergine: #2c001e;
+  --ubuntu-aubergine-light: #77216f;
+  --ubuntu-warm-grey: #aea79f;
+  --yaru-window-bg: #222226;
+  --yaru-view-bg: #1d1d20;
+  --yaru-header-bar-bg: #2e2e32;
+  --yaru-header-bar-backdrop: #222226;
+  --yaru-sidebar-bg: #2e2e32;
+  --yaru-card-bg: rgba(255, 255, 255, 0.08);
+  --yaru-popover-bg: #36363a;
+  --yaru-dialog-bg: #36363a;
+  --yaru-top-bar-bg: #1d1d1d;
+  --yaru-terminal-bg: #300a24;
+  --yaru-text-primary: #ffffff;
+  --yaru-text-secondary: #929299;
+  --yaru-border-color: rgba(255, 255, 255, 0.1);
+  --yaru-hover-bg: rgba(255, 255, 255, 0.1);
+  --yaru-active-bg: rgba(255, 255, 255, 0.15);
+  --yaru-close-hover: #e01b24;
+
+  font-family: var(--font-recovery-ubuntu), "Ubuntu", "Cantarell", sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.recovery-os *,
+.recovery-os *::before,
+.recovery-os *::after {
+  box-sizing: border-box;
+}
+
+.recovery-os *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.recovery-os *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recovery-os *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.recovery-os *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.recovery-os ::selection {
+  background: rgba(233, 84, 32, 0.4);
+  color: white;
+}
+
+.recovery-os .ubuntu-wallpaper {
+  background: linear-gradient(
+    135deg,
+    #2c001e 0%,
+    #3c0a2e 15%,
+    #4a1040 30%,
+    #5c1650 45%,
+    #7b1f5e 55%,
+    #9b2840 65%,
+    #c43820 75%,
+    #e95420 85%,
+    #f27649 95%
+  );
+}
+
+.recovery-os .ubuntu-login-bg {
+  background: linear-gradient(180deg, #1a0015 0%, #2c001e 30%, #2c001e 70%, #1a0015 100%);
+}
+
+.recovery-os .ubuntu-no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.recovery-os .ubuntu-text-select {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.recovery-os .dock-tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #36363a;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.recovery-os .ubuntu-toggle {
+  width: 40px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.recovery-os .ubuntu-toggle.active {
+  background: #e95420;
+}
+
+.recovery-os .ubuntu-toggle::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+
+.recovery-os .ubuntu-toggle.active::after {
+  transform: translateX(18px);
+}
+
+.recovery-os .terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: #e95420;
+  animation: recovery-cursor-blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+.recovery-os .animate-window-open {
+  animation: recovery-window-open 0.2s ease-out forwards;
+}
+
+.recovery-os .animate-fade-in {
+  animation: recovery-fade-in 0.3s ease forwards;
+}
+
+.recovery-os .animate-slide-down {
+  animation: recovery-slide-down 0.2s ease-out forwards;
+}
+
+.recovery-os .animate-notification-in {
+  animation: recovery-notification-in 0.2s ease-out forwards;
+}
+
+.recovery-os .animate-cursor-blink {
+  animation: recovery-cursor-blink 1s step-end infinite;
+}
+
+.recovery-os .animate-login-fade {
+  animation: recovery-login-fade 1s ease forwards;
+}
+
+@keyframes recovery-window-open {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes recovery-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes recovery-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes recovery-notification-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes recovery-cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes recovery-login-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1497,6 +1721,16 @@ a:focus-visible {
   .hero-kinetic-field__edge::after,
   .hero-kinetic-field__node,
   .hero-kinetic-field__node::after {
+    animation: none !important;
+  }
+
+  .recovery-os .animate-window-open,
+  .recovery-os .animate-fade-in,
+  .recovery-os .animate-slide-down,
+  .recovery-os .animate-notification-in,
+  .recovery-os .animate-cursor-blink,
+  .recovery-os .animate-login-fade,
+  .recovery-os .terminal-cursor {
     animation: none !important;
   }
 }

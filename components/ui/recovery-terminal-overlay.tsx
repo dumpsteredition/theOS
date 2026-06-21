@@ -48,7 +48,8 @@ const repeatDiagnosticRecoveryLines = [
   "restoring tape_integrity",
   "resetting bluntness_overflow",
   "clearing user_curiosity_flag",
-  "restoring app shell",
+  "main shell stability check failed",
+  "mounting emergency linux recovery environment",
 ] as const;
 
 const firstFinalRepairScriptLines = [
@@ -66,7 +67,8 @@ const repeatFinalRepairScriptLines = [
   "> sealing switch housing...",
   "> issuing closure notice...",
   "> marking incident as officially closed...",
-  "> routing to safety...",
+  "> setting boot target: /you-really-broke-it",
+  "> failing over to linux recovery...",
   "> done.",
 ] as const;
 
@@ -83,8 +85,8 @@ const recoveryScripts = {
     main: repeatRecoveryMainLines,
     diagnostics: repeatDiagnosticRecoveryLines,
     final: repeatFinalRepairScriptLines,
-    waitingFooter: "IT is waiting for confirmation before touching anything else.",
-    runningFooter: "Repair script is running. Please do not encourage it.",
+    waitingFooter: "IT is waiting for confirmation before booting the emergency environment.",
+    runningFooter: "Recovery handoff is running. Please do not encourage it.",
     idleFooter: "IT has expressed concerns about repeat knob incidents.",
   },
 } as const;
@@ -107,6 +109,22 @@ export function RecoveryTerminalOverlay({
 }: RecoveryTerminalOverlayProps) {
   const reducedMotion = useReducedMotion();
   const recoveryScript = recoveryScripts[variant];
+  const isRepeatIncident = variant === "repeat";
+  const confirmInstruction = isRepeatIncident
+    ? "Simulated IT recovery terminal. Press Enter to boot the emergency environment, or Escape to force it."
+    : "Simulated IT recovery terminal. Press Enter to continue repair, or Escape to force restore.";
+  const repairPrompt = isRepeatIncident
+    ? "PRESS ENTER TO BOOT RECOVERY"
+    : "PRESS ENTER TO LET IT FIX THIS";
+  const repairButtonLabel = isRepeatIncident
+    ? "> Press Enter / Tap to boot recovery"
+    : "> Press Enter / Tap to repair";
+  const runningLabel = isRepeatIncident
+    ? "> boot handoff running..."
+    : "> applying repair script...";
+  const completeLabel = isRepeatIncident
+    ? "routing user to emergency linux login..."
+    : "routing user to safety...";
   const shellRef = useRef<HTMLDivElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const skipButtonRef = useRef<HTMLButtonElement>(null);
@@ -317,7 +335,7 @@ export function RecoveryTerminalOverlay({
         <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden rounded-[1.6rem] border border-[#19412a] bg-[linear-gradient(180deg,rgba(2,10,5,0.96),rgba(1,6,4,0.99))] shadow-[0_0_0_1px_rgba(75,189,117,0.06),0_24px_120px_rgba(0,0,0,0.55)]">
           <div className="sticky top-0 z-10 flex shrink-0 flex-col gap-2 border-b border-[#143320] bg-[#061006]/95 px-3 py-3 text-[0.68rem] uppercase leading-5 tracking-[0.16em] text-[#58be79] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:text-[0.72rem] sm:tracking-[0.22em]">
             <span id="recovery-terminal-description" className="max-w-3xl break-words">
-              Simulated IT recovery terminal. Press Enter to continue repair, or Escape to force restore.
+              {confirmInstruction}
             </span>
             <span>session: repair-in-progress</span>
           </div>
@@ -368,7 +386,7 @@ export function RecoveryTerminalOverlay({
                       Awaiting operator confirmation
                     </p>
                     <p className="text-[0.86rem] font-medium leading-6 text-[#91ffb8] sm:text-[1rem]">
-                      PRESS ENTER TO LET IT FIX THIS
+                      {repairPrompt}
                       <TerminalCursor />
                     </p>
                     <button
@@ -378,7 +396,7 @@ export function RecoveryTerminalOverlay({
                       disabled={phase !== "awaitingRepairConfirm"}
                       className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-[0.45rem] border border-[#245e3a] bg-[#051109]/88 px-3 py-2 text-left text-[0.72rem] uppercase leading-5 tracking-[0.14em] text-[#91ffb8] transition hover:border-[#4ab672] hover:bg-[#09170d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#84ffad]/45 disabled:cursor-not-allowed disabled:border-[#173c26] disabled:bg-[#041008]/55 disabled:text-[#5aa276] sm:max-w-fit sm:text-[0.78rem] sm:tracking-[0.18em]"
                     >
-                      <span className="break-words">{">"} Press Enter / Tap to repair</span>
+                      <span className="break-words">{repairButtonLabel}</span>
                       {phase === "awaitingRepairConfirm" ? <TerminalCursor /> : null}
                     </button>
                   </div>
@@ -393,7 +411,7 @@ export function RecoveryTerminalOverlay({
                     ))}
                     {phase === "repairRunning" ? (
                       <p className="text-[#4fa66c]">
-                        {">"} applying repair script...
+                        {runningLabel}
                         <TerminalCursor />
                       </p>
                     ) : null}
@@ -402,7 +420,7 @@ export function RecoveryTerminalOverlay({
 
                 {phase === "repairComplete" ? (
                   <div className="border-t border-[#102d1b] pt-4 text-[0.8rem] text-[#91ffb8]">
-                    routing user to safety...
+                    {completeLabel}
                   </div>
                 ) : null}
               </div>

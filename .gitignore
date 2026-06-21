@@ -26,3 +26,8 @@ pnpm-debug.log*
 # Local scratch/archive material
 Downloads/
 temp delete/
+.codex-temp/
+.pet-runs/
+.tmp-inbox-check/
+*.zip
+*.tar
