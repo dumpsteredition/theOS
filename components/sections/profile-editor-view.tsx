@@ -602,10 +602,10 @@ export function ProfileEditorView() {
     setLanguageFilterRepairNudges(0);
     setLiveMessage(
       shouldCloseIncident
-        ? "Language filter incident closed. Homepage restore initiated."
+        ? "Language filter incident closed. Emergency recovery environment initiated."
         : "Homepage restore initiated.",
     );
-    router.replace("/");
+    router.replace(shouldCloseIncident ? "/you-really-broke-it" : "/");
   }
 
   function handleLanguageFilterSecretReset() {

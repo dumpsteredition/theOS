@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono, Manrope, Shadows_Into_Light } from "next/font/google";
 
-import { FeedbackIntegrityProvider } from "@/components/feedback/feedback-integrity";
-import { AmbientOrbs } from "@/components/interactions/ambient-orbs";
-import { WorkspaceShell } from "@/components/shell/workspace-shell";
-import { CommandPaletteProvider } from "@/components/ui/command-palette";
-import { ToastProvider } from "@/components/ui/toast";
 import { SITE_NAME, SITE_TAGLINE, SITE_TITLE } from "@/lib/constants";
 
 import "./globals.css";
@@ -89,16 +84,7 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} ${dmSans.variable} ${jetBrainsMono.variable} ${shadowsIntoLight.variable} min-h-screen bg-[color:var(--background)] font-sans text-[color:var(--text-primary)] antialiased`}
       >
-        <ToastProvider>
-          <FeedbackIntegrityProvider>
-            <CommandPaletteProvider>
-              <div className="relative isolate min-h-screen overflow-hidden lg:overflow-visible">
-                <AmbientOrbs />
-                <WorkspaceShell>{children}</WorkspaceShell>
-              </div>
-            </CommandPaletteProvider>
-          </FeedbackIntegrityProvider>
-        </ToastProvider>
+        {children}
       </body>
     </html>
   );
