@@ -1,5 +1,5 @@
-import { LogsView } from "@/components/sections/logs-view";
+import { LogsFieldNotesView } from "@/components/sections/logs-field-notes-view";
 
 export default function LogsPage() {
-  return <LogsView />;
+  return <LogsFieldNotesView />;
 }
