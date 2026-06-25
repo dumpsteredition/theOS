@@ -1,10 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
-  BookOpenText,
   Crosshair,
   Quote,
   Search,
@@ -20,8 +17,6 @@ import {
   type SystemLogEntry,
 } from "@/data/system-logs";
 import { cn } from "@/lib/utils";
-
-import { ViewHeader } from "@/components/sections/view-primitives";
 
 const ALL_TOPICS = "All Notes";
 
@@ -126,20 +121,12 @@ export function LogsFieldNotesView() {
 
   return (
     <section className="space-y-6">
-      <ViewHeader
-        eyebrow="System Logs Concept"
-        title="Field Notes Wall"
-        description="A cleaner read on the strongest product instincts: less machinery, more signal, and fewer things pretending to be a database."
-        actions={
-          <Link
-            href="/logs"
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white/84 transition duration-[var(--motion-base)] hover:border-white/16 hover:bg-white/[0.07] hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Current logs
-          </Link>
-        }
-      />
+      <div className="max-w-3xl space-y-3">
+        <p className="eyebrow">Field Notes</p>
+        <h2 className="text-3xl font-semibold tracking-[-0.045em] text-white sm:text-4xl">
+          System Logs
+        </h2>
+      </div>
 
       <section className="luxe-panel overflow-hidden rounded-[calc(var(--radius-2xl)+0.15rem)]">
         <div className="grid gap-0 xl:grid-cols-[minmax(0,0.98fr)_minmax(360px,0.62fr)]">
@@ -207,14 +194,13 @@ export function LogsFieldNotesView() {
 
           <aside className="space-y-5 bg-black/10 p-5 sm:p-7">
             <div className="space-y-3">
-              <p className="eyebrow">Signal Controls</p>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--text-muted)]" />
                 <input
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search product truths..."
+                  placeholder="Search logs..."
                   className="h-12 w-full rounded-2xl border border-white/10 bg-black/18 pl-11 pr-12 text-sm text-white outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--cool-accent-border)] focus:bg-white/[0.04]"
                 />
                 {query ? (
@@ -268,16 +254,6 @@ export function LogsFieldNotesView() {
                 </button>
               ))}
             </div>
-
-            <div className="rounded-[1.35rem] border border-white/8 bg-black/16 p-4">
-              <div className="flex items-start gap-3">
-                <BookOpenText className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--accent)]" />
-                <p className="text-sm leading-6 text-[color:var(--text-muted)]">
-                  The alternate direction treats each log like a usable thought instead
-                  of a file record.
-                </p>
-              </div>
-            </div>
           </aside>
         </div>
       </section>
@@ -326,7 +302,7 @@ export function LogsFieldNotesView() {
                     {entry.context}
                   </p>
                   <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-white/78">
-                    Focus note
+                    Select
                     <ArrowRight className="h-4 w-4 text-[color:var(--accent)] transition duration-[var(--motion-base)] group-hover:translate-x-0.5" />
                   </div>
                 </div>
@@ -340,9 +316,6 @@ export function LogsFieldNotesView() {
         <section className="rounded-[1.75rem] border border-dashed border-white/12 bg-black/12 px-5 py-10 text-center">
           <p className="text-xl font-semibold tracking-[-0.03em] text-white">
             No notes found.
-          </p>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[color:var(--text-muted)]">
-            The query is too narrow for this archive pass.
           </p>
         </section>
       ) : null}
